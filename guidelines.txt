@@ -1,0 +1,54 @@
+Mini Project Demo Evaluation Guidelines (DevOps Projects)
+A DevOps project is NOT about what the application is, but how the application is built, deployed, and managed.
+The application can be anything simple, like:
+•	A basic webpage (most common) 
+•	A small REST API 
+•	A form submission app 
+•	A simple microservice 
+•	Even a static website 
+Review – 1 (Focus: Build + Docker + CI/CD Pipeline)
+While observing the demo, please verify the following:
+1.	Application Working
+o	Student runs the application (UI + API).
+o	A simple webpage should open.
+o	Entering sample/dummy data should submit successfully (DB optional).
+2.	Code Availability (Git)
+o	Project must be pushed to GitHub including Dockerfile.
+o	Repo should contain frontend + backend code.
+o	Basic README is a plus(Optional).
+3.	Jenkins Execution
+o	Student should trigger a Jenkins job (freestyle or pipeline).
+o	Show pipeline stages (build → docker build → docker push optional).
+4.	Docker Build
+o	Docker image must be created during demo.
+o	Verify using:
+	docker images command
+5.	Pipeline Integration
+o	End-to-end flow should be shown:
+	Code → Jenkins → Docker build → Run container
+o	Application should run via Docker container (not local run).
+________________________________________
+Review – 2 (Focus: Deployment using Kubernetes)
+In addition to Review–1 checks:
+6.	Kubernetes Deployment (Minikube)
+o	Student should deploy application using Minikube.
+o	Verify:
+	kubectl get pods
+	kubectl get services
+7.	Application Access
+o	App should be accessed via:
+	NodePort / Minikube service URL
+o	Webpage should open from Kubernetes deployment.
+8.	Deployment Files
+o	YAML files must be present:
+	Deployment.yaml
+	Service.yaml
+9.	End-to-End Flow
+o	Git → Jenkins → Docker → Kubernetes should be clearly demonstrated.
+
+Important Note:
+•	DB is not mandatory (dummy data submission is acceptable).
+•	Focus more on DevOps pipeline integration, not UI complexity.
+•	Students should not run app directly from IDE during demo.
+•	Terraform is not mandatory, it can be considered as advanced implementation.
+

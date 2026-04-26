@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rollback Deployment Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+        :root {
+            --surface: rgba(255, 255, 255, 0.92);
+            --surface-strong: #ffffff;
+            --ink: #0f172a;
+            --muted: #5b6b82;
+            --accent: #1d4ed8;
+            --accent-2: #0f766e;
+            --accent-soft: rgba(29, 78, 216, 0.12);
+            --border: rgba(148, 163, 184, 0.35);
+            --ring: rgba(29, 78, 216, 0.25);
+            --shadow: 0 18px 40px rgba(15, 23, 42, 0.1);
+            --shadow-soft: 0 8px 18px rgba(15, 23, 42, 0.08);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Sora', 'Segoe UI', sans-serif;
+            background: linear-gradient(120deg, #f8fafc 0%, #e2f1ff 45%, #e6f4ee 100%);
+            color: var(--ink);
+            min-height: 100vh;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            inset: -20% -10% auto;
+            height: 55%;
+            background: radial-gradient(circle at top left, rgba(37, 99, 235, 0.18), transparent 60%),
+                radial-gradient(circle at top right, rgba(14, 165, 233, 0.18), transparent 60%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(rgba(148, 163, 184, 0.25) 1px, transparent 1px);
+            background-size: 22px 22px;
+            opacity: 0.25;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            width: min(1120px, 92vw);
+            margin: 0 auto;
+            padding: 48px 0 64px;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: clamp(2.1rem, 3.2vw, 2.9rem);
+            letter-spacing: -0.02em;
+        }
+
+        h2 {
+            margin: 0 0 12px;
+            font-size: 1.1rem;
+        }
+
+
+        .subtitle {
+            margin: 0;
+            color: var(--muted);
+            max-width: 700px;
+            line-height: 1.55;
+        }
+
+        .grid {
+            margin-top: 28px;
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        }
+
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            padding: 22px;
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(12px);
+            animation: rise 0.7s ease both;
+        }
+
+        .stack {
+            display: grid;
+            gap: 6px;
+        }
+
+        .card:nth-child(1) {
+            animation-delay: 0.05s;
+        }
+
+        .card:nth-child(2) {
+            animation-delay: 0.12s;
+        }
+
+        .card:nth-child(3) {
+            animation-delay: 0.18s;
+        }
+
+        .status-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #f59e0b;
+            box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.15);
+        }
+
+        .dot.ok {
+            background: #22c55e;
+            box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.2);
+        }
+
+        .dot.down {
+            background: #ef4444;
+            box-shadow: 0 0 0 6px rgba(239, 68, 68, 0.2);
+        }
+
+        .status {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: -0.01em;
+        }
+
+        .muted {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .button-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+
+        .field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .field label {
+            font-size: 11px;
+            color: var(--muted);
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+        }
+
+        select {
+            padding: 10px 12px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--surface-strong);
+            font-size: 14px;
+            font-family: inherit;
+            min-width: 160px;
+            appearance: none;
+            background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+                linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+            background-position: calc(100% - 18px) calc(50% - 2px),
+                calc(100% - 12px) calc(50% - 2px);
+            background-size: 6px 6px;
+            background-repeat: no-repeat;
+        }
+
+        select:focus {
+            outline: 2px solid var(--ring);
+            border-color: var(--accent);
+        }
+
+        button {
+            border: none;
+            background: linear-gradient(135deg, var(--accent), #0ea5e9);
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: var(--shadow-soft);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+            letter-spacing: 0.01em;
+        }
+
+        button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 32px rgba(37, 99, 235, 0.25);
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.6;
+            box-shadow: none;
+        }
+
+        .log {
+            background: rgba(248, 250, 252, 0.95);
+            border: 1px dashed rgba(148, 163, 184, 0.4);
+            padding: 12px;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', ui-monospace, monospace;
+            font-size: 12px;
+            height: 220px;
+            overflow-y: auto;
+            color: #0f172a;
+            white-space: pre-wrap;
+        }
+
+        .outcome {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.4);
+            background: rgba(148, 163, 184, 0.12);
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .outcome::before {
+            content: '';
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #94a3b8;
+            box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.2);
+        }
+
+        .outcome.success {
+            border-color: rgba(34, 197, 94, 0.4);
+            background: rgba(34, 197, 94, 0.12);
+            color: #14532d;
+        }
+
+        .outcome.success::before {
+            background: #22c55e;
+            box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.2);
+        }
+
+        .outcome.warn {
+            border-color: rgba(245, 158, 11, 0.45);
+            background: rgba(245, 158, 11, 0.14);
+            color: #7c2d12;
+        }
+
+        .outcome.warn::before {
+            background: #f59e0b;
+            box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.2);
+        }
+
+        .outcome.fail {
+            border-color: rgba(239, 68, 68, 0.45);
+            background: rgba(239, 68, 68, 0.12);
+            color: #7f1d1d;
+        }
+
+        .outcome.fail::before {
+            background: #ef4444;
+            box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.2);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            background: rgba(14, 165, 233, 0.14);
+            color: #0f172a;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .footer {
+            margin-top: 28px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        @keyframes rise {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 720px) {
+            .button-row {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+        }
+    </style>
+</head>
+
+<body>
+<div class="container">
+    <header>
+        <h1>Rollback Deployment Dashboard</h1>
+        <p class="subtitle">Trigger deployments, watch the health check, and review rollback output from the controller.</p>
+    </header>
+
+    <section class="grid">
+        <div class="card">
+            <h2>Application status</h2>
+            <div class="status-row">
+                <span id="status-dot" class="dot"></span>
+                <div>
+                    <div id="status" class="status">Checking...</div>
+                    <div id="status-meta" class="muted">Waiting for server response</div>
+                    <div class="muted">Active version: <span id="active-version" class="badge">unknown</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Deployment control</h2>
+            <div class="status-row">
+                <span id="deploy-dot" class="dot"></span>
+                <div>
+                    <div id="deploy-status" class="status">Idle</div>
+                    <div id="deploy-meta" class="muted">No deployment started yet</div>
+                </div>
+            </div>
+            <div class="button-row">
+                <div class="field">
+                    <label for="deploy-version">Target version</label>
+                    <select id="deploy-version">
+                        <option value="v1">v1 (baseline)</option>
+                        <option value="v2" selected>v2 (stable)</option>
+                        <option value="v3">v3 (fail)</option>
+                    </select>
+                </div>
+                <button id="deploy-button">Deploy</button>
+            </div>
+            <div class="stack">
+                <div id="deploy-message" class="muted">Ready</div>
+                <div id="deploy-outcome" class="outcome">Outcome: none</div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2>Deployment logs</h2>
+            <div id="logs" class="log">Waiting for output...</div>
+        </div>
+    </section>
+
+    <div class="footer">Tip: keep the app running in Docker while the controller triggers deployments.</div>
+</div>
+
+<script>
+    const appStatusUrl = 'http://localhost:3000/status';
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status');
+    const statusMeta = document.getElementById('status-meta');
+    const activeVersion = document.getElementById('active-version');
+
+    const deployDot = document.getElementById('deploy-dot');
+    const deployStatus = document.getElementById('deploy-status');
+    const deployMeta = document.getElementById('deploy-meta');
+    const deploySelect = document.getElementById('deploy-version');
+    const deployButton = document.getElementById('deploy-button');
+    const deployMessage = document.getElementById('deploy-message');
+    const deployOutcome = document.getElementById('deploy-outcome');
+
+    const logs = document.getElementById('logs');
+
+    function escapeHtml(value) {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    async function checkAppStatus() {
+        try {
+            const response = await fetch(appStatusUrl, { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error('Bad response');
+            }
+
+            const data = await response.json();
+            statusDot.className = 'dot ok';
+            statusText.textContent = 'Healthy';
+            statusMeta.textContent = 'Last check at ' + new Date(data.time).toLocaleTimeString();
+            activeVersion.textContent = data.version;
+        } catch (error) {
+            statusDot.className = 'dot down';
+            statusText.textContent = 'Down';
+            statusMeta.textContent = 'No response from API';
+            activeVersion.textContent = 'unknown';
+        }
+    }
+
+    function renderDeployState(state) {
+        const targetLabel = state.targetVersion ? `Target ${state.targetVersion}` : 'Target not set';
+        const outcomeLabel = state.lastMessage ? state.lastMessage : (state.lastResult || 'idle');
+        const outcomeTone = getOutcomeTone(outcomeLabel, state.lastResult, state.running);
+
+        if (state.running) {
+            deployDot.className = 'dot';
+            deployStatus.textContent = 'Running';
+            deployMeta.textContent = targetLabel + ' | Started at ' + (state.startedAt ? new Date(state.startedAt).toLocaleTimeString() : 'now');
+            setDeployControlsDisabled(true);
+            deployMessage.textContent = 'Deployment in progress';
+            setOutcome('running', 'warn');
+            return;
+        }
+
+        setDeployControlsDisabled(false);
+        if (state.lastResult === 'success') {
+            deployDot.className = 'dot ok';
+            deployStatus.textContent = 'Success';
+        } else if (state.lastResult === 'failed') {
+            deployDot.className = 'dot down';
+            deployStatus.textContent = 'Failed';
+        } else {
+            deployDot.className = 'dot';
+            deployStatus.textContent = 'Idle';
+        }
+
+        const finished = state.finishedAt ? new Date(state.finishedAt).toLocaleTimeString() : 'N/A';
+        deployMeta.textContent = targetLabel + ' | Finished at ' + finished;
+        deployMessage.textContent = 'Ready';
+        setOutcome(outcomeLabel, outcomeTone);
+    }
+
+    function getOutcomeTone(outcomeLabel, lastResult, running) {
+        if (running) {
+            return 'warn';
+        }
+
+        const value = (outcomeLabel || '').toLowerCase();
+        if (value.includes('rolled back')) {
+            return 'warn';
+        }
+        if (value.includes('deployed')) {
+            return 'success';
+        }
+        if (value.includes('failed')) {
+            return 'fail';
+        }
+
+        return lastResult === 'failed' ? 'fail' : 'neutral';
+    }
+
+    function setOutcome(text, tone) {
+        const safeTone = tone || 'neutral';
+        deployOutcome.className = `outcome ${safeTone}`.trim();
+        deployOutcome.textContent = 'Outcome: ' + text;
+    }
+
+    function setDeployControlsDisabled(disabled) {
+        deploySelect.disabled = disabled;
+        deployButton.disabled = disabled;
+    }
+
+    async function refreshDeployStatus() {
+        try {
+            const response = await fetch('/deploy/status', { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error('Bad response');
+            }
+
+            const data = await response.json();
+            renderDeployState(data);
+        } catch (error) {
+            deployDot.className = 'dot down';
+            deployStatus.textContent = 'Unavailable';
+            deployMeta.textContent = 'Controller offline';
+            deployMessage.textContent = 'Unable to reach controller';
+            setOutcome('unknown', 'fail');
+            setDeployControlsDisabled(true);
+        }
+    }
+
+    async function refreshLogs() {
+        try {
+            const response = await fetch('/deploy/logs?limit=200', { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error('Bad response');
+            }
+
+            const data = await response.json();
+            if (!Array.isArray(data.lines) || data.lines.length === 0) {
+                logs.textContent = 'No logs yet.';
+                return;
+            }
+
+            logs.innerHTML = data.lines.map((line) => escapeHtml(line)).join('\n');
+            logs.scrollTop = logs.scrollHeight;
+        } catch (error) {
+            logs.textContent = 'Unable to load logs.';
+        }
+    }
+
+    async function triggerDeploy(version) {
+        deployMessage.textContent = 'Starting deployment for ' + version + '...';
+        try {
+            const response = await fetch(`/deploy?version=${encodeURIComponent(version)}`, { method: 'POST' });
+            if (!response.ok) {
+                let message = 'Unable to start deployment';
+                try {
+                    const data = await response.json();
+                    message = data.message || message;
+                } catch (parseError) {
+                    message = 'Unable to start deployment';
+                }
+                deployMessage.textContent = message;
+                return;
+            }
+
+            const data = await response.json();
+            deployMessage.textContent = data.message || 'Deployment triggered';
+            await refreshDeployStatus();
+            await refreshLogs();
+        } catch (error) {
+            deployMessage.textContent = 'Controller not reachable';
+        }
+    }
+
+    deployButton.addEventListener('click', () => {
+        triggerDeploy(deploySelect.value);
+    });
+
+    checkAppStatus();
+    refreshDeployStatus();
+    refreshLogs();
+
+    setInterval(() => {
+        checkAppStatus();
+        refreshDeployStatus();
+        refreshLogs();
+    }, 4000);
+</script>
+</body>
+</html>
