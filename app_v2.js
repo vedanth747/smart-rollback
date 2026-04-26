@@ -38,7 +38,7 @@ const server = http.createServer((req, res) => {
     if (req.method === 'GET' && (requestPath === '/status' || requestPath === '/health')) {
         sendJson(res, 200, {
             version: VERSION,
-            status: 'healthy',
+            status: 'unhealthy',
             time: new Date().toISOString()
         });
         return;
