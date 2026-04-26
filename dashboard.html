@@ -223,6 +223,26 @@
             box-shadow: none;
         }
 
+        .link-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.04);
+            color: var(--ink);
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: var(--shadow-soft);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+        }
+
+        .link-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+        }
+
         .log {
             background: rgba(248, 250, 252, 0.95);
             border: 1px dashed rgba(148, 163, 184, 0.4);
@@ -375,6 +395,26 @@
         </div>
 
         <div class="card">
+            <h2>Jenkins pipeline</h2>
+            <div class="status-row">
+                <span id="jenkins-dot" class="dot"></span>
+                <div>
+                    <div id="jenkins-status" class="status">Checking...</div>
+                    <div id="jenkins-meta" class="muted">Waiting for Jenkins</div>
+                    <div class="muted">Job: <span id="jenkins-job" class="badge">unknown</span></div>
+                </div>
+            </div>
+            <div class="button-row">
+                <button id="jenkins-build">Trigger build</button>
+                <a id="jenkins-open" class="link-button" href="#" target="_blank" rel="noreferrer">Open Jenkins</a>
+            </div>
+            <div class="stack">
+                <div id="jenkins-last" class="muted">Last build: n/a</div>
+                <div id="jenkins-outcome" class="outcome">Outcome: unknown</div>
+            </div>
+        </div>
+
+        <div class="card">
             <h2>Deployment logs</h2>
             <div id="logs" class="log">Waiting for output...</div>
         </div>
@@ -397,6 +437,15 @@
     const deployButton = document.getElementById('deploy-button');
     const deployMessage = document.getElementById('deploy-message');
     const deployOutcome = document.getElementById('deploy-outcome');
+
+    const jenkinsDot = document.getElementById('jenkins-dot');
+    const jenkinsStatus = document.getElementById('jenkins-status');
+    const jenkinsMeta = document.getElementById('jenkins-meta');
+    const jenkinsJob = document.getElementById('jenkins-job');
+    const jenkinsLast = document.getElementById('jenkins-last');
+    const jenkinsOutcome = document.getElementById('jenkins-outcome');
+    const jenkinsBuildButton = document.getElementById('jenkins-build');
+    const jenkinsOpen = document.getElementById('jenkins-open');
 
     const logs = document.getElementById('logs');
 
@@ -487,6 +536,12 @@
         deployOutcome.textContent = 'Outcome: ' + text;
     }
 
+    function setJenkinsOutcome(text, tone) {
+        const safeTone = tone || 'neutral';
+        jenkinsOutcome.className = `outcome ${safeTone}`.trim();
+        jenkinsOutcome.textContent = 'Outcome: ' + text;
+    }
+
     function setDeployControlsDisabled(disabled) {
         deploySelect.disabled = disabled;
         deployButton.disabled = disabled;
@@ -531,6 +586,99 @@
         }
     }
 
+    function renderJenkinsStatus(data) {
+        if (!data || !data.ok) {
+            jenkinsDot.className = 'dot down';
+            jenkinsStatus.textContent = 'Unavailable';
+            jenkinsMeta.textContent = data && data.message ? data.message : 'Jenkins not reachable';
+            jenkinsJob.textContent = 'unknown';
+            jenkinsLast.textContent = 'Last build: n/a';
+            setJenkinsOutcome('unknown', 'fail');
+            jenkinsBuildButton.disabled = true;
+            return;
+        }
+
+        jenkinsBuildButton.disabled = false;
+        jenkinsJob.textContent = data.job && data.job.name ? data.job.name : 'unknown';
+        jenkinsOpen.href = (data.job && data.job.url) ? data.job.url : data.jenkinsUrl;
+
+        const lastBuild = data.lastBuild || {};
+        const lastNumber = lastBuild.number ? `#${lastBuild.number}` : 'n/a';
+        const lastResult = lastBuild.building ? 'RUNNING' : (lastBuild.result || 'UNKNOWN');
+        const lastTime = lastBuild.timestamp ? new Date(lastBuild.timestamp).toLocaleTimeString() : 'n/a';
+        jenkinsLast.textContent = `Last build: ${lastNumber} | ${lastResult} | ${lastTime}`;
+
+        if (data.lastCommit && data.lastCommit.message) {
+            jenkinsMeta.textContent = `Last commit: ${data.lastCommit.message}`;
+        } else {
+            jenkinsMeta.textContent = `Jenkins: ${data.jenkinsUrl}`;
+        }
+
+        if (lastBuild.building) {
+            jenkinsDot.className = 'dot';
+            jenkinsStatus.textContent = 'Running';
+            setJenkinsOutcome('running', 'warn');
+            return;
+        }
+
+        if (lastBuild.result === 'SUCCESS') {
+            jenkinsDot.className = 'dot ok';
+            jenkinsStatus.textContent = 'Success';
+            setJenkinsOutcome('success', 'success');
+            return;
+        }
+
+        if (lastBuild.result === 'UNSTABLE') {
+            jenkinsDot.className = 'dot';
+            jenkinsStatus.textContent = 'Unstable';
+            setJenkinsOutcome('unstable', 'warn');
+            return;
+        }
+
+        if (lastBuild.result === 'FAILURE' || lastBuild.result === 'ABORTED') {
+            jenkinsDot.className = 'dot down';
+            jenkinsStatus.textContent = lastBuild.result === 'ABORTED' ? 'Aborted' : 'Failed';
+            setJenkinsOutcome(lastBuild.result.toLowerCase(), 'fail');
+            return;
+        }
+
+        jenkinsDot.className = 'dot';
+        jenkinsStatus.textContent = 'Idle';
+        setJenkinsOutcome('idle', 'neutral');
+    }
+
+    async function refreshJenkinsStatus() {
+        try {
+            const response = await fetch('/jenkins/status', { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error('Bad response');
+            }
+            const data = await response.json();
+            renderJenkinsStatus(data);
+        } catch (error) {
+            renderJenkinsStatus({ ok: false, message: 'Jenkins not reachable' });
+        }
+    }
+
+    async function triggerJenkinsBuild() {
+        jenkinsBuildButton.disabled = true;
+        jenkinsMeta.textContent = 'Triggering Jenkins build...';
+        try {
+            const response = await fetch('/jenkins/build', { method: 'POST' });
+            if (!response.ok) {
+                jenkinsMeta.textContent = 'Failed to trigger Jenkins build';
+                return;
+            }
+            jenkinsMeta.textContent = 'Build triggered. Waiting for Jenkins to start...';
+        } catch (error) {
+            jenkinsMeta.textContent = 'Failed to reach Jenkins';
+        } finally {
+            setTimeout(() => {
+                refreshJenkinsStatus();
+            }, 1500);
+        }
+    }
+
     async function triggerDeploy(version) {
         deployMessage.textContent = 'Starting deployment for ' + version + '...';
         try {
@@ -560,14 +708,20 @@
         triggerDeploy(deploySelect.value);
     });
 
+    jenkinsBuildButton.addEventListener('click', () => {
+        triggerJenkinsBuild();
+    });
+
     checkAppStatus();
     refreshDeployStatus();
     refreshLogs();
+    refreshJenkinsStatus();
 
     setInterval(() => {
         checkAppStatus();
         refreshDeployStatus();
         refreshLogs();
+        refreshJenkinsStatus();
     }, 4000);
 </script>
 </body>

@@ -36,6 +36,14 @@ docker images
   - `DOCKER_USER`
   - `DOCKER_PASS`
 
+## Dashboard + Jenkins integration
+- The dashboard (served by `controller.js`) can show Jenkins status and trigger builds.
+- Configure these environment variables before starting the controller:
+  - `JENKINS_URL` (default: `http://localhost:8080`)
+  - `JENKINS_JOB` (default: `rollback-pipeline`)
+  - `JENKINS_USER` and `JENKINS_TOKEN` (API token for authenticated Jenkins)
+  - `JENKINS_TRIGGER_TOKEN` (optional, if you enabled remote build tokens)
+
 ## API endpoints
 - App: `GET /status` or `GET /health`
 - Controller: `POST /deploy?version=v1|v2|v3`, `GET /deploy/status`, `GET /deploy/logs`
