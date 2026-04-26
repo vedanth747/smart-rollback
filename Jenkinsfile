@@ -101,7 +101,7 @@ pipeline {
                             @echo off
                             for /l %%i in (1,1,10) do (
                               curl -sf http://localhost:3000/status >nul 2>&1
-                              if %errorlevel%==0 exit /b 0
+                                                            if not errorlevel 1 exit /b 0
                               timeout /t 2 >nul
                             )
                             echo Smoke test failed after retries
