@@ -86,9 +86,27 @@ pipeline {
             steps {
                 script {
                     if (isUnix()) {
-                        sh 'curl -s http://localhost:3000/status'
+                        sh '''
+                            for i in $(seq 1 10); do
+                              if curl -sf http://localhost:3000/status; then
+                                exit 0
+                              fi
+                              sleep 2
+                            done
+                            echo "Smoke test failed after retries"
+                            exit 1
+                        '''
                     } else {
-                        bat 'curl -s http://localhost:3000/status'
+                        bat '''
+                            @echo off
+                            for /l %%i in (1,1,10) do (
+                              curl -sf http://localhost:3000/status >nul 2>&1
+                              if %errorlevel%==0 exit /b 0
+                              timeout /t 2 >nul
+                            )
+                            echo Smoke test failed after retries
+                            exit /b 1
+                        '''
                     }
                 }
             }
