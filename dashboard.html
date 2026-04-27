@@ -411,6 +411,8 @@
             <div class="stack">
                 <div id="jenkins-last" class="muted">Last build: n/a</div>
                 <div id="jenkins-outcome" class="outcome">Outcome: unknown</div>
+                <div id="git-latest" class="muted">Latest commit: n/a</div>
+                <div id="git-stability" class="outcome">Stability: unknown</div>
             </div>
         </div>
 
@@ -446,8 +448,13 @@
     const jenkinsOutcome = document.getElementById('jenkins-outcome');
     const jenkinsBuildButton = document.getElementById('jenkins-build');
     const jenkinsOpen = document.getElementById('jenkins-open');
+    const gitLatest = document.getElementById('git-latest');
+    const gitStability = document.getElementById('git-stability');
 
     const logs = document.getElementById('logs');
+
+    let latestJenkinsStatus = null;
+    let latestGitStatus = null;
 
     function escapeHtml(value) {
         return value
@@ -540,6 +547,12 @@
         const safeTone = tone || 'neutral';
         jenkinsOutcome.className = `outcome ${safeTone}`.trim();
         jenkinsOutcome.textContent = 'Outcome: ' + text;
+    }
+
+    function setGitOutcome(text, tone) {
+        const safeTone = tone || 'neutral';
+        gitStability.className = `outcome ${safeTone}`.trim();
+        gitStability.textContent = 'Stability: ' + text;
     }
 
     function setDeployControlsDisabled(disabled) {
@@ -647,6 +660,52 @@
         setJenkinsOutcome('idle', 'neutral');
     }
 
+    function renderGitSummary(jenkinsData, gitData) {
+        if (!gitData || !gitData.ok) {
+            gitLatest.textContent = 'Latest commit: unavailable';
+            setGitOutcome('unknown', 'fail');
+            return;
+        }
+
+        const shortSha = gitData.shortSha || 'n/a';
+        const message = gitData.message || 'no message';
+        gitLatest.textContent = `Latest commit: ${shortSha} - ${message}`;
+
+        if (!jenkinsData || !jenkinsData.ok || !jenkinsData.lastBuild) {
+            setGitOutcome('unknown', 'neutral');
+            return;
+        }
+
+        const lastBuild = jenkinsData.lastBuild;
+        if (lastBuild.building) {
+            setGitOutcome('building', 'warn');
+            return;
+        }
+
+        if (lastBuild.result === 'SUCCESS') {
+            setGitOutcome(`stable at ${shortSha}`, 'success');
+            return;
+        }
+
+        if (lastBuild.result === 'UNSTABLE') {
+            setGitOutcome('unstable', 'warn');
+            return;
+        }
+
+        if (lastBuild.result === 'FAILURE' || lastBuild.result === 'ABORTED') {
+            if (jenkinsData.lastSuccessfulCommit && jenkinsData.lastSuccessfulCommit.id) {
+                const stableSha = jenkinsData.lastSuccessfulCommit.id.slice(0, 7);
+                const stableMsg = jenkinsData.lastSuccessfulCommit.message || 'stable';
+                setGitOutcome(`rolled back to ${stableSha} (${stableMsg})`, 'warn');
+                return;
+            }
+            setGitOutcome('failed (no rollback info)', 'fail');
+            return;
+        }
+
+        setGitOutcome('unknown', 'neutral');
+    }
+
     async function refreshJenkinsStatus() {
         try {
             const response = await fetch('/jenkins/status', { cache: 'no-store' });
@@ -654,9 +713,29 @@
                 throw new Error('Bad response');
             }
             const data = await response.json();
+            latestJenkinsStatus = data;
             renderJenkinsStatus(data);
+            renderGitSummary(latestJenkinsStatus, latestGitStatus);
         } catch (error) {
-            renderJenkinsStatus({ ok: false, message: 'Jenkins not reachable' });
+            const fallback = { ok: false, message: 'Jenkins not reachable' };
+            latestJenkinsStatus = fallback;
+            renderJenkinsStatus(fallback);
+            renderGitSummary(latestJenkinsStatus, latestGitStatus);
+        }
+    }
+
+    async function refreshGitStatus() {
+        try {
+            const response = await fetch('/git/status', { cache: 'no-store' });
+            if (!response.ok) {
+                throw new Error('Bad response');
+            }
+            const data = await response.json();
+            latestGitStatus = data;
+            renderGitSummary(latestJenkinsStatus, latestGitStatus);
+        } catch (error) {
+            latestGitStatus = { ok: false };
+            renderGitSummary(latestJenkinsStatus, latestGitStatus);
         }
     }
 
@@ -716,12 +795,14 @@
     refreshDeployStatus();
     refreshLogs();
     refreshJenkinsStatus();
+    refreshGitStatus();
 
     setInterval(() => {
         checkAppStatus();
         refreshDeployStatus();
         refreshLogs();
         refreshJenkinsStatus();
+        refreshGitStatus();
     }, 4000);
 </script>
 </body>

@@ -2,7 +2,7 @@ const http = require('http');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { execFile, spawn } = require('child_process');
 
 const PORT = process.env.CONTROLLER_PORT || 5000;
 const scriptPath = path.join(__dirname, 'deploy.bat');
@@ -67,6 +67,42 @@ function sendJson(res, statusCode, payload) {
         'Cache-Control': 'no-store'
     });
     res.end(body);
+}
+
+function runGitCommand(args) {
+    return new Promise((resolve) => {
+        execFile('git', args, { cwd: __dirname }, (error, stdout, stderr) => {
+            if (error) {
+                const message = (stderr || error.message || '').trim();
+                resolve({ ok: false, error: message || 'Git command failed' });
+                return;
+            }
+
+            resolve({ ok: true, output: stdout.trim() });
+        });
+    });
+}
+
+async function fetchGitStatus() {
+    const [head, message, branch] = await Promise.all([
+        runGitCommand(['rev-parse', '--short', 'HEAD']),
+        runGitCommand(['log', '-1', '--pretty=%s']),
+        runGitCommand(['rev-parse', '--abbrev-ref', 'HEAD'])
+    ]);
+
+    if (!head.ok || !message.ok) {
+        return {
+            ok: false,
+            message: head.error || message.error || 'Git not available'
+        };
+    }
+
+    return {
+        ok: true,
+        shortSha: head.output,
+        message: message.output,
+        branch: branch.ok ? branch.output : 'unknown'
+    };
 }
 
 function getJenkinsAuthHeader() {
@@ -162,6 +198,33 @@ async function getCrumbHeaders() {
     return crumbCache.headers;
 }
 
+async function fetchBuildDetails(jobPath, buildNumber, headers) {
+    const buildResponse = await requestJenkinsJson(`${jobPath}/${buildNumber}/api/json?tree=number,result,building,timestamp,displayName,url,changeSet[items[commitId,msg,author[fullName]]]`, {
+        headers
+    });
+
+    if (!buildResponse.data || buildResponse.response.statusCode >= 400) {
+        return null;
+    }
+
+    const changes = (buildResponse.data.changeSet && buildResponse.data.changeSet.items) || [];
+    const commit = changes.length > 0 ? {
+        id: changes[0].commitId,
+        message: changes[0].msg,
+        author: changes[0].author && changes[0].author.fullName
+    } : null;
+
+    return {
+        number: buildResponse.data.number,
+        result: buildResponse.data.result,
+        building: buildResponse.data.building,
+        timestamp: buildResponse.data.timestamp,
+        displayName: buildResponse.data.displayName,
+        url: buildResponse.data.url,
+        commit
+    };
+}
+
 async function fetchJenkinsStatus() {
     const authHeader = getJenkinsAuthHeader();
     const jobPath = getJenkinsJobPath();
@@ -190,27 +253,33 @@ async function fetchJenkinsStatus() {
     };
 
     if (payload.lastBuild && payload.lastBuild.number) {
-        const buildResponse = await requestJenkinsJson(`${jobPath}/${payload.lastBuild.number}/api/json?tree=number,result,building,timestamp,displayName,url,changeSet[items[commitId,msg,author[fullName]]]`, {
-            headers
-        });
-        if (buildResponse.data && buildResponse.response.statusCode < 400) {
+        const details = await fetchBuildDetails(jobPath, payload.lastBuild.number, headers);
+        if (details) {
             payload.lastBuild = {
                 ...payload.lastBuild,
-                number: buildResponse.data.number,
-                result: buildResponse.data.result,
-                building: buildResponse.data.building,
-                timestamp: buildResponse.data.timestamp,
-                displayName: buildResponse.data.displayName,
-                url: buildResponse.data.url
+                number: details.number,
+                result: details.result,
+                building: details.building,
+                timestamp: details.timestamp,
+                displayName: details.displayName,
+                url: details.url
             };
+            if (details.commit) {
+                payload.lastCommit = details.commit;
+            }
+        }
+    }
 
-            const changes = (buildResponse.data.changeSet && buildResponse.data.changeSet.items) || [];
-            if (changes.length > 0) {
-                payload.lastCommit = {
-                    id: changes[0].commitId,
-                    message: changes[0].msg,
-                    author: changes[0].author && changes[0].author.fullName
-                };
+    if (payload.lastSuccessfulBuild && payload.lastSuccessfulBuild.number) {
+        const successDetails = await fetchBuildDetails(jobPath, payload.lastSuccessfulBuild.number, headers);
+        if (successDetails) {
+            payload.lastSuccessfulBuild = {
+                ...payload.lastSuccessfulBuild,
+                number: successDetails.number,
+                url: successDetails.url
+            };
+            if (successDetails.commit) {
+                payload.lastSuccessfulCommit = successDetails.commit;
             }
         }
     }
@@ -321,6 +390,16 @@ const server = http.createServer(async (req, res) => {
             'Cache-Control': 'no-store'
         });
         res.end(dashboardHtml);
+        return;
+    }
+
+    if (req.method === 'GET' && requestPath === '/git/status') {
+        try {
+            const payload = await fetchGitStatus();
+            sendJson(res, 200, payload);
+        } catch (error) {
+            sendJson(res, 200, { ok: false, message: 'Unable to read git status' });
+        }
         return;
     }
 
