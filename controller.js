@@ -38,6 +38,11 @@ const deployState = {
     finishedAt: null,
     targetVersion: null,
     lastMessage: null,
+    commitSha: null,
+    commitMsg: null,
+    lastGoodCommitSha: null,
+    lastGoodCommitMsg: null,
+    rollbackTriggered: false,
     logs: []
 };
 
@@ -84,24 +89,64 @@ function runGitCommand(args) {
 }
 
 async function fetchGitStatus() {
-    const [head, message, branch] = await Promise.all([
+    const [headShort, headFull, message, branch] = await Promise.all([
         runGitCommand(['rev-parse', '--short', 'HEAD']),
+        runGitCommand(['rev-parse', 'HEAD']),
         runGitCommand(['log', '-1', '--pretty=%s']),
         runGitCommand(['rev-parse', '--abbrev-ref', 'HEAD'])
     ]);
 
-    if (!head.ok || !message.ok) {
+    if (!headShort.ok || !message.ok) {
         return {
             ok: false,
-            message: head.error || message.error || 'Git not available'
+            message: headShort.error || message.error || 'Git not available'
         };
     }
 
     return {
         ok: true,
-        shortSha: head.output,
+        shortSha: headShort.output,
+        fullSha: headFull.ok ? headFull.output : null,
         message: message.output,
         branch: branch.ok ? branch.output : 'unknown'
+    };
+}
+
+async function fetchGitHistory(limit) {
+    const safeLimit = Number.isFinite(limit) ? Math.max(1, Math.min(limit, 25)) : 10;
+    const format = '%H%x1f%h%x1f%s%x1f%an%x1f%ad%x1e';
+    const history = await runGitCommand([
+        'log',
+        `-n`,
+        `${safeLimit}`,
+        '--date=iso-strict',
+        `--pretty=format:${format}`
+    ]);
+
+    if (!history.ok) {
+        return {
+            ok: false,
+            message: history.error || 'Git history not available'
+        };
+    }
+
+    const commits = history.output
+        .split('\x1e')
+        .filter(Boolean)
+        .map((line) => {
+            const [fullSha, shortSha, subject, author, date] = line.split('\x1f');
+            return {
+                fullSha: fullSha || '',
+                shortSha: shortSha || '',
+                message: subject || '',
+                author: author || '',
+                date: date || ''
+            };
+        });
+
+    return {
+        ok: true,
+        commits
     };
 }
 
@@ -318,7 +363,7 @@ function normalizeVersion(value) {
     return ALLOWED_VERSIONS.has(normalized) ? normalized : null;
 }
 
-function runDeployment(targetVersion) {
+function runDeployment(targetVersion, commitInfo) {
     if (deployState.running) {
         return false;
     }
@@ -330,9 +375,15 @@ function runDeployment(targetVersion) {
     deployState.finishedAt = null;
     deployState.targetVersion = targetVersion;
     deployState.lastMessage = null;
+    deployState.rollbackTriggered = false;
+    deployState.commitSha = commitInfo ? commitInfo.sha : null;
+    deployState.commitMsg = commitInfo ? commitInfo.msg : null;
     deployState.logs = [];
     addLog('Deployment started');
     addLog(`Target version: ${targetVersion}`);
+    if (commitInfo) {
+        addLog(`Commit: ${commitInfo.sha} — ${commitInfo.msg}`);
+    }
 
     const isWindows = process.platform === 'win32';
     const command = isWindows ? 'cmd.exe' : 'sh';
@@ -364,6 +415,20 @@ function runDeployment(targetVersion) {
         deployState.lastExitCode = code;
         deployState.finishedAt = new Date().toISOString();
         deployState.lastResult = code === 0 ? 'success' : 'failed';
+
+        const msg = (deployState.lastMessage || '').toLowerCase();
+        if (msg.includes('rolled back')) {
+            deployState.rollbackTriggered = true;
+            addLog(`Rollback triggered — rolled back from ${deployState.commitSha || 'unknown'}`);
+            if (deployState.lastGoodCommitSha) {
+                addLog(`Stable commit: ${deployState.lastGoodCommitSha} — ${deployState.lastGoodCommitMsg || ''}`);
+            }
+        } else if (code === 0 && commitInfo) {
+            deployState.lastGoodCommitSha = commitInfo.sha;
+            deployState.lastGoodCommitMsg = commitInfo.msg;
+            addLog(`Commit ${commitInfo.sha} marked as last good`);
+        }
+
         addLog(`Deployment finished with code ${code}`);
     });
 
@@ -403,6 +468,17 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.method === 'GET' && requestPath === '/git/history') {
+        try {
+            const limit = Number.parseInt(url.searchParams.get('limit') || '', 10);
+            const payload = await fetchGitHistory(limit);
+            sendJson(res, 200, payload);
+        } catch (error) {
+            sendJson(res, 200, { ok: false, message: 'Unable to read git history' });
+        }
+        return;
+    }
+
     if (req.method === 'GET' && requestPath === '/jenkins/status') {
         try {
             const payload = await fetchJenkinsStatus();
@@ -435,13 +511,51 @@ const server = http.createServer(async (req, res) => {
             return;
         }
 
-        const started = runDeployment(targetVersion);
+        let commitInfo = null;
+        try {
+            const git = await fetchGitStatus();
+            if (git.ok) {
+                commitInfo = { sha: git.shortSha, msg: git.message };
+            }
+        } catch (e) {}
+
+        const started = runDeployment(targetVersion, commitInfo);
         if (!started) {
             sendJson(res, 409, { ok: false, message: 'Deployment already running.' });
             return;
         }
 
-        sendJson(res, 202, { ok: true, message: `Deployment started for ${targetVersion}.` });
+        sendJson(res, 202, { ok: true, message: `Deployment started for ${targetVersion}.`, commitSha: commitInfo ? commitInfo.sha : null });
+        return;
+    }
+
+    if (req.method === 'POST' && requestPath === '/deploy/latest') {
+        try {
+            const git = await fetchGitStatus();
+            if (!git.ok) {
+                sendJson(res, 500, { ok: false, message: 'Cannot read git status: ' + (git.message || 'unknown') });
+                return;
+            }
+
+            const targetVersion = normalizeVersion(url.searchParams.get('version')) || DEFAULT_VERSION;
+            const commitInfo = { sha: git.shortSha, msg: git.message };
+
+            const started = runDeployment(targetVersion, commitInfo);
+            if (!started) {
+                sendJson(res, 409, { ok: false, message: 'Deployment already running.' });
+                return;
+            }
+
+            sendJson(res, 202, {
+                ok: true,
+                message: `Deploying latest commit ${git.shortSha} (${targetVersion})`,
+                commitSha: git.shortSha,
+                commitMsg: git.message,
+                branch: git.branch
+            });
+        } catch (error) {
+            sendJson(res, 500, { ok: false, message: 'Failed to deploy latest commit' });
+        }
         return;
     }
 
@@ -453,7 +567,12 @@ const server = http.createServer(async (req, res) => {
             startedAt: deployState.startedAt,
             finishedAt: deployState.finishedAt,
             targetVersion: deployState.targetVersion,
-            lastMessage: deployState.lastMessage
+            lastMessage: deployState.lastMessage,
+            commitSha: deployState.commitSha,
+            commitMsg: deployState.commitMsg,
+            lastGoodCommitSha: deployState.lastGoodCommitSha,
+            lastGoodCommitMsg: deployState.lastGoodCommitMsg,
+            rollbackTriggered: deployState.rollbackTriggered
         });
         return;
     }

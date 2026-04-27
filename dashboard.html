@@ -91,11 +91,48 @@
         /* Badge */
         .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:600;background:var(--blue-bg);color:var(--blue);border:1px solid rgba(59,130,246,.2)}
 
+        /* Commit history */
+        .commit-list{display:grid;gap:10px}
+        .commit-item{padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-2)}
+        .commit-item.latest{border-color:rgba(59,130,246,.6)}
+        .commit-item.stable{border-color:var(--green-border)}
+        .commit-top{display:flex;justify-content:space-between;gap:12px;align-items:center}
+        .commit-sha{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--text-dim)}
+        .commit-msg{font-size:.84rem;font-weight:600;color:var(--text)}
+        .commit-meta{margin-top:6px;font-size:.72rem;color:var(--text-dim);display:flex;justify-content:space-between;gap:12px}
+        .commit-tags{display:flex;gap:6px;flex-wrap:wrap}
+        .commit-tag{padding:2px 8px;border-radius:999px;font-size:.65rem;font-weight:600;border:1px solid var(--border);color:var(--text-dim)}
+        .commit-tag.latest{border-color:rgba(59,130,246,.6);color:var(--blue)}
+        .commit-tag.stable{border-color:var(--green-border);color:var(--green)}
+
         /* Meta row */
         .meta{font-size:.78rem;color:var(--text-dim);margin-top:6px;line-height:1.6}
 
         /* Footer */
         .footer{margin-top:40px;text-align:center;color:var(--text-muted);font-size:.75rem;padding:16px;border-top:1px solid var(--border)}
+
+        /* Deploy Latest btn */
+        .btn-latest{width:100%;padding:14px;border-radius:var(--radius-sm);border:1px dashed var(--accent);background:rgba(99,102,241,.06);color:var(--accent);font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer;transition:all .2s;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px}
+        .btn-latest:hover:not(:disabled){background:rgba(99,102,241,.14);border-style:solid;transform:translateY(-1px);box-shadow:0 4px 20px var(--accent-glow)}
+        .btn-latest:disabled{opacity:.4;cursor:not-allowed}
+        .btn-latest .sha{font-family:'JetBrains Mono',monospace;font-size:.75rem;opacity:.8}
+
+        /* Modal overlay */
+        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:none;place-items:center;animation:fadeIn .2s ease}
+        .modal-overlay.show{display:grid}
+        .modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px;max-width:480px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:modalIn .3s ease}
+        .modal-icon{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:28px;margin:0 auto 16px}
+        .modal-icon.fail{background:var(--red-bg);border:2px solid var(--red-border)}
+        .modal-icon.ok{background:var(--green-bg);border:2px solid var(--green-border)}
+        .modal h2{text-align:center;font-size:1.2rem;margin-bottom:8px}
+        .modal p{text-align:center;color:var(--text-dim);font-size:.85rem;line-height:1.6;margin-bottom:16px}
+        .modal .commit-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:.78rem;display:flex;align-items:center;gap:10px}
+        .commit-box .label{color:var(--text-muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;min-width:55px}
+        .commit-box .sha{color:var(--amber);font-weight:600}
+        .commit-box .msg{color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .commit-box.stable .sha{color:var(--green)}
+        .modal .btn-close{display:block;margin:16px auto 0;padding:10px 32px}
+        @keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(12px)}to{opacity:1;transform:none}}
 
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
@@ -161,29 +198,26 @@
             </div>
         </div>
 
-        <!-- Deploy Control -->
+        <!-- Git History -->
         <div class="card">
-            <div class="card-head"><div class="card-title"><i>🚀</i> Deploy</div><span id="deploy-outcome" class="pill">idle</span></div>
-            <div class="si">
-                <span id="deploy-dot" class="si-dot"></span>
-                <div><div id="deploy-status" class="si-label">Idle</div><div id="deploy-meta" class="si-sub">No deployment started yet</div></div>
-            </div>
-            <div class="deploy-grid">
-                <button class="dbtn" data-version="v1" id="btn-v1">v1<small>baseline</small></button>
-                <button class="dbtn" data-version="v2" id="btn-v2">v2<small>stable</small></button>
-                <button class="dbtn v3" data-version="v3" id="btn-v3">v3<small>💥 broken</small></button>
-            </div>
-            <div id="deploy-message" class="meta">Pick a version to deploy</div>
-        </div>
-
-        <!-- Logs -->
-        <div class="card grid-full">
-            <div class="card-head"><div class="card-title"><i>📋</i> Live Logs</div><button id="clear-logs" class="btn btn-outline" style="padding:5px 12px;font-size:.72rem">Clear</button></div>
-            <div id="logs" class="logbox">Waiting for output…</div>
+            <div class="card-head"><div class="card-title"><i>🧾</i> Commit History</div><span id="git-branch" class="badge">unknown</span></div>
+            <div id="git-history" class="commit-list">Loading commits…</div>
         </div>
     </section>
 
     <div class="footer">Smart Rollback — keep the app running in Docker while the controller triggers deployments</div>
+</div>
+
+<!-- Build Status Modal -->
+<div id="build-modal" class="modal-overlay">
+    <div class="modal">
+        <div id="modal-icon" class="modal-icon">✓</div>
+        <h2 id="modal-title">Build Status</h2>
+        <p id="modal-desc">Build result summary.</p>
+        <div class="commit-box"><span class="label">Latest</span><span id="modal-latest-sha" class="sha">—</span><span id="modal-latest-msg" class="msg"></span></div>
+        <div id="modal-stable-row" class="commit-box stable"><span class="label">Stable</span><span id="modal-stable-sha" class="sha">—</span><span id="modal-stable-msg" class="msg"></span></div>
+        <button id="modal-close" class="btn btn-close">Dismiss</button>
+    </div>
 </div>
 
 <script>
@@ -193,26 +227,63 @@ const APP_URL = 'http://localhost:3000/status';
 const $ = id => document.getElementById(id);
 
 const statusDot=$('status-dot'), statusText=$('status'), statusMeta=$('status-meta'), activeVersion=$('active-version');
-const deployDot=$('deploy-dot'), deployStatus=$('deploy-status'), deployMeta=$('deploy-meta');
-const deployMessage=$('deploy-message'), deployOutcome=$('deploy-outcome');
 const jenkinsDot=$('jenkins-dot'), jenkinsStatus=$('jenkins-status'), jenkinsMeta=$('jenkins-meta');
 const jenkinsJob=$('jenkins-job'), jenkinsLast=$('jenkins-last'), jenkinsOutcome=$('jenkins-outcome');
 const jenkinsBuildBtn=$('jenkins-build'), jenkinsOpen=$('jenkins-open');
 const gitLatest=$('git-latest'), gitStability=$('git-stability');
+const gitHistory=$('git-history'), gitBranch=$('git-branch');
 const releaseDot=$('release-dot'), releaseStatus=$('release-status'), releaseMeta=$('release-meta'), releaseRollback=$('release-rollback');
-const logsEl=$('logs'), connDot=$('conn-dot'), connLabel=$('conn-label');
-const deployBtns=document.querySelectorAll('.dbtn');
+const connDot=$('conn-dot'), connLabel=$('conn-label');
 
-let latestJenkins=null, latestGit=null, controllerOk=false;
+const buildModal=$('build-modal');
+const modalIcon=$('modal-icon');
+const modalTitle=$('modal-title');
+const modalDesc=$('modal-desc');
+const modalLatestSha=$('modal-latest-sha');
+const modalLatestMsg=$('modal-latest-msg');
+const modalStableRow=$('modal-stable-row');
+const modalStableSha=$('modal-stable-sha');
+const modalStableMsg=$('modal-stable-msg');
+
+let latestJenkins=null, latestGit=null, latestHistory=null, controllerOk=false;
 
 function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 
 function setConn(ok){controllerOk=ok;connDot.className='conn-dot'+(ok?' live':'');connLabel.textContent=ok?'Controller online':'Controller offline'}
 
+function updateConnection(ok){
+    if(ok){setConn(true);return;}
+    const anyOk=(latestJenkins&&latestJenkins.ok)||(latestGit&&latestGit.ok)||(latestHistory&&latestHistory.ok);
+    setConn(!!anyOk);
+}
+
 function dotClass(type){return 'si-dot'+(type==='ok'?' ok':type==='warn'?' warn':type==='err'?' err':'')}
 function pillClass(type){return 'pill'+(type==='ok'?' ok':type==='warn'?' warn':type==='err'?' err':'')}
 
-function setDeployDisabled(d){deployBtns.forEach(b=>b.disabled=d)}
+function showBuildModal(mode, latestSha, latestMsg, stableSha, stableMsg){
+    const isSuccess = mode === 'success';
+    modalIcon.className = `modal-icon ${isSuccess ? 'ok' : 'fail'}`;
+    modalIcon.textContent = isSuccess ? '✓' : '⚠️';
+    modalTitle.textContent = isSuccess ? 'Build Successful' : 'Build Failed — Rolled Back';
+    modalDesc.textContent = isSuccess
+        ? 'Latest commit built successfully and is now stable.'
+        : 'Latest commit failed. Rolled back to the last stable commit.';
+    modalLatestSha.textContent = latestSha || 'unknown';
+    modalLatestMsg.textContent = latestMsg || '';
+
+    if (isSuccess) {
+        modalStableRow.style.display = 'none';
+    } else {
+        modalStableRow.style.display = 'flex';
+        modalStableSha.textContent = stableSha || 'none';
+        modalStableMsg.textContent = stableMsg || 'no stable commit found';
+    }
+
+    buildModal.classList.add('show');
+}
+
+$('modal-close').addEventListener('click',()=>buildModal.classList.remove('show'));
+buildModal.addEventListener('click',e=>{if(e.target===buildModal)buildModal.classList.remove('show')});
 
 // --- App Health ---
 async function checkApp(){
@@ -232,48 +303,60 @@ async function checkApp(){
     }
 }
 
-// --- Deploy Status ---
-function renderDeploy(s){
-    const target=s.targetVersion?'Target '+s.targetVersion:'No target';
-    const outcomeText=s.lastMessage||s.lastResult||'idle';
-    if(s.running){
-        deployDot.className=dotClass('warn');
-        deployStatus.textContent='Deploying…';
-        deployMeta.textContent=target+' • started '+new Date(s.startedAt).toLocaleTimeString();
-        deployMessage.textContent='Deployment in progress';
-        deployOutcome.className=pillClass('warn');deployOutcome.textContent='running';
-        setDeployDisabled(true);return;
+// --- Git History ---
+function renderGitHistory(history, jd, gd){
+    if(!history||!history.ok||!Array.isArray(history.commits)){
+        gitHistory.textContent='Unable to load commits.';return;
     }
-    setDeployDisabled(false);
-    if(s.lastResult==='success'){deployDot.className=dotClass('ok');deployStatus.textContent='Success'}
-    else if(s.lastResult==='failed'){deployDot.className=dotClass('err');deployStatus.textContent='Failed'}
-    else{deployDot.className=dotClass('');deployStatus.textContent='Idle'}
-    const fin=s.finishedAt?new Date(s.finishedAt).toLocaleTimeString():'n/a';
-    deployMeta.textContent=target+' • finished '+fin;
-    deployMessage.textContent='Ready';
-    const tone=outcomeText.toLowerCase().includes('rolled back')?'warn':outcomeText.toLowerCase().includes('deployed')?'ok':s.lastResult==='failed'?'err':'';
-    deployOutcome.className=pillClass(tone);deployOutcome.textContent=outcomeText;
+    const stableFull=jd?.lastSuccessfulCommit?.id||null;
+    const latestFull=gd?.fullSha||null;
+    gitHistory.innerHTML=history.commits.map(c=>{
+        const isLatest=latestFull&&c.fullSha===latestFull;
+        const isStable=stableFull&&c.fullSha===stableFull;
+        const tags=[];
+        if(isLatest)tags.push('<span class="commit-tag latest">latest</span>');
+        if(isStable)tags.push('<span class="commit-tag stable">stable</span>');
+        const dateLabel=c.date?new Date(c.date).toLocaleString():'unknown time';
+        return `
+            <div class="commit-item${isLatest?' latest':''}${isStable?' stable':''}">
+                <div class="commit-top">
+                    <div>
+                        <div class="commit-msg">${esc(c.message||'no message')}</div>
+                        <div class="commit-sha">${c.shortSha||'unknown'}</div>
+                    </div>
+                    <div class="commit-tags">${tags.join('')}</div>
+                </div>
+                <div class="commit-meta">
+                    <span>${esc(c.author||'unknown author')}</span>
+                    <span>${dateLabel}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
 }
 
-async function refreshDeploy(){
-    try{const r=await fetch('/deploy/status',{cache:'no-store'});if(!r.ok)throw 0;setConn(true);renderDeploy(await r.json())}
-    catch{setConn(false);deployDot.className=dotClass('err');deployStatus.textContent='Offline';deployMeta.textContent='Controller not reachable';setDeployDisabled(true)}
-}
+function maybeShowBuildModal(jd, gd){
+    if(!jd||!jd.ok||!jd.lastBuild){return;}
+    const lb=jd.lastBuild;
+    if(lb.building){return;}
+    const key=`${lb.number||'n/a'}-${lb.result||'UNKNOWN'}`;
+    const stored=localStorage.getItem('rollback-dashboard-last-build');
+    if(stored===key){return;}
+    localStorage.setItem('rollback-dashboard-last-build', key);
 
-// --- Logs ---
-async function refreshLogs(){
-    try{
-        const r=await fetch('/deploy/logs?limit=200',{cache:'no-store'});if(!r.ok)throw 0;
-        const d=await r.json();
-        if(!d.lines||!d.lines.length){logsEl.textContent='No logs yet.';return}
-        logsEl.innerHTML=d.lines.map(l=>{
-            const safe=esc(l);
-            if(l.includes('ERROR'))return `<span class="log-line log-err">${safe}</span>`;
-            if(l.includes('RESULT:'))return `<span class="log-line log-result">${safe}</span>`;
-            return `<span class="log-line">${safe}</span>`;
-        }).join('\n');
-        logsEl.scrollTop=logsEl.scrollHeight;
-    }catch{logsEl.textContent='Unable to load logs.'}
+    const latestSha=gd?.shortSha||(jd.lastCommit?.id?jd.lastCommit.id.slice(0,7):'unknown');
+    const latestMsg=gd?.message||jd.lastCommit?.message||'';
+
+    if(lb.result==='SUCCESS'){
+        showBuildModal('success', latestSha, latestMsg, null, null);
+        return;
+    }
+
+    if(lb.result==='FAILURE'||lb.result==='ABORTED'||lb.result==='UNSTABLE'){
+        const stableSha=jd.lastSuccessfulCommit?.id?jd.lastSuccessfulCommit.id.slice(0,7):null;
+        const stableMsg=jd.lastSuccessfulCommit?.message||'';
+        showBuildModal('failure', latestSha, latestMsg, stableSha, stableMsg);
+    }
 }
 
 // --- Jenkins ---
@@ -302,7 +385,8 @@ function renderJenkins(d){
 }
 
 function renderGit(jd,gd){
-    if(!gd||!gd.ok){gitLatest.textContent='Latest commit: unavailable';gitStability.className=pillClass('err');gitStability.textContent='unknown';return}
+    if(!gd||!gd.ok){gitLatest.textContent='Latest commit: unavailable';gitStability.className=pillClass('err');gitStability.textContent='unknown';gitBranch.textContent='unknown';return}
+    gitBranch.textContent=gd.branch||'unknown';
     gitLatest.textContent=`Latest commit: ${gd.shortSha||'n/a'} — ${gd.message||'no message'}`;
     if(!jd||!jd.ok||!jd.lastBuild){gitStability.className=pillClass('');gitStability.textContent='unknown';return}
     const lb=jd.lastBuild;
@@ -387,12 +471,17 @@ async function refreshJenkins(){
         renderJenkins(d);
         renderGit(latestJenkins,latestGit);
         renderRelease(latestJenkins,latestGit);
+        renderGitHistory(latestHistory,latestJenkins,latestGit);
+        maybeShowBuildModal(latestJenkins,latestGit);
+        updateConnection(true);
     }
     catch{
         latestJenkins={ok:false};
         renderJenkins(latestJenkins);
         renderGit(latestJenkins,latestGit);
         renderRelease(latestJenkins,latestGit);
+        renderGitHistory(latestHistory,latestJenkins,latestGit);
+        updateConnection(false);
     }
 }
 
@@ -403,27 +492,34 @@ async function refreshGit(){
         latestGit=await r.json();
         renderGit(latestJenkins,latestGit);
         renderRelease(latestJenkins,latestGit);
+        renderGitHistory(latestHistory,latestJenkins,latestGit);
+        updateConnection(true);
     }
     catch{
         latestGit={ok:false};
         renderGit(latestJenkins,latestGit);
         renderRelease(latestJenkins,latestGit);
+        renderGitHistory(latestHistory,latestJenkins,latestGit);
+        updateConnection(false);
+    }
+}
+
+async function refreshGitHistory(){
+    try{
+        const r=await fetch('/git/history?limit=8',{cache:'no-store'});
+        if(!r.ok)throw 0;
+        latestHistory=await r.json();
+        renderGitHistory(latestHistory,latestJenkins,latestGit);
+        updateConnection(true);
+    }
+    catch{
+        latestHistory={ok:false};
+        renderGitHistory(latestHistory,latestJenkins,latestGit);
+        updateConnection(false);
     }
 }
 
 // --- Actions ---
-async function triggerDeploy(ver){
-    deployMessage.textContent='Starting '+ver+'…';setDeployDisabled(true);
-    try{
-        const r=await fetch('/deploy?version='+encodeURIComponent(ver),{method:'POST'});
-        if(!r.ok){let m='Failed';try{m=(await r.json()).message||m}catch{}deployMessage.textContent=m;setDeployDisabled(false);return}
-        deployMessage.textContent=(await r.json()).message||'Triggered';
-        await refreshDeploy();await refreshLogs();
-    }catch{deployMessage.textContent='Controller not reachable';setDeployDisabled(false)}
-}
-
-deployBtns.forEach(b=>b.addEventListener('click',()=>triggerDeploy(b.dataset.version)));
-
 jenkinsBuildBtn.addEventListener('click',async()=>{
     jenkinsBuildBtn.disabled=true;jenkinsMeta.textContent='Triggering…';
     try{const r=await fetch('/jenkins/build',{method:'POST'});jenkinsMeta.textContent=r.ok?'Build triggered — waiting…':'Failed to trigger'}
@@ -431,11 +527,9 @@ jenkinsBuildBtn.addEventListener('click',async()=>{
     finally{setTimeout(refreshJenkins,1500)}
 });
 
-$('clear-logs').addEventListener('click',()=>{logsEl.textContent='Cleared.'});
-
 // --- Init ---
-checkApp();refreshDeploy();refreshLogs();refreshJenkins();refreshGit();
-setInterval(()=>{checkApp();refreshDeploy();refreshLogs();refreshJenkins();refreshGit()},4000);
+checkApp();refreshJenkins();refreshGit();refreshGitHistory();
+setInterval(()=>{checkApp();refreshJenkins();refreshGit();refreshGitHistory()},4000);
 </script>
 </body>
 </html>
