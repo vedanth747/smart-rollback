@@ -11,11 +11,15 @@ pipeline {
         githubPush()
     }
 
+    parameters {
+        string(name: 'APP_FILE', defaultValue: 'app_v2.js', description: 'App file to build (for simulation)')
+    }
+
     environment {
         IMAGE_NAME = 'rollback-app'
         IMAGE_TAG = 'v2'
         CONTAINER_NAME = 'rollback_app'
-        APP_FILE = 'app_v2.js'
+        APP_FILE = "${params.APP_FILE}"
         ROLLBACK_TAG = 'last-good'
         KUBE_CONTEXT = 'minikube'
         KUBE_NAMESPACE = 'default'

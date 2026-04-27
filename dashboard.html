@@ -1,535 +1,1083 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Rollback Deployment Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
     <style>
-        *{box-sizing:border-box;margin:0;padding:0}
-        :root{
-            --bg:#0b0f1a;--surface:#131825;--surface-2:#1a2035;--surface-3:#212840;
-            --border:#2a3150;--border-light:#353d5c;
-            --text:#e2e8f0;--text-dim:#8892b0;--text-muted:#5a6380;
-            --accent:#6366f1;--accent-glow:rgba(99,102,241,.25);
-            --green:#22c55e;--green-bg:rgba(34,197,94,.12);--green-border:rgba(34,197,94,.3);
-            --red:#ef4444;--red-bg:rgba(239,68,68,.1);--red-border:rgba(239,68,68,.3);
-            --amber:#f59e0b;--amber-bg:rgba(245,158,11,.1);--amber-border:rgba(245,158,11,.3);
-            --blue:#3b82f6;--blue-bg:rgba(59,130,246,.1);
-            --radius:14px;--radius-sm:10px;
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
         }
-        body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
-        body::before{content:'';position:fixed;top:-40%;left:-20%;width:80%;height:80%;background:radial-gradient(circle,rgba(99,102,241,.08) 0%,transparent 60%);pointer-events:none}
-        body::after{content:'';position:fixed;bottom:-30%;right:-10%;width:60%;height:60%;background:radial-gradient(circle,rgba(34,197,94,.05) 0%,transparent 60%);pointer-events:none}
 
-        .shell{max-width:1200px;margin:0 auto;padding:32px 24px 64px;position:relative;z-index:1}
+        :root {
+            --bg: #0b0f1a;
+            --surface: #131825;
+            --surface-2: #1a2035;
+            --surface-3: #212840;
+            --border: #2a3150;
+            --border-light: #353d5c;
+            --text: #e2e8f0;
+            --text-dim: #8892b0;
+            --text-muted: #5a6380;
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, .25);
+            --green: #22c55e;
+            --green-bg: rgba(34, 197, 94, .12);
+            --green-border: rgba(34, 197, 94, .3);
+            --red: #ef4444;
+            --red-bg: rgba(239, 68, 68, .1);
+            --red-border: rgba(239, 68, 68, .3);
+            --amber: #f59e0b;
+            --amber-bg: rgba(245, 158, 11, .1);
+            --amber-border: rgba(245, 158, 11, .3);
+            --blue: #3b82f6;
+            --blue-bg: rgba(59, 130, 246, .1);
+            --radius: 14px;
+            --radius-sm: 10px;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -40%;
+            left: -20%;
+            width: 80%;
+            height: 80%;
+            background: radial-gradient(circle, rgba(99, 102, 241, .08) 0%, transparent 60%);
+            pointer-events: none
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%;
+            right: -10%;
+            width: 60%;
+            height: 60%;
+            background: radial-gradient(circle, rgba(34, 197, 94, .05) 0%, transparent 60%);
+            pointer-events: none
+        }
+
+        .shell {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px 24px 64px;
+            position: relative;
+            z-index: 1
+        }
 
         /* Top bar */
-        .topbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:32px;flex-wrap:wrap}
-        .brand{display:flex;align-items:center;gap:12px}
-        .brand-icon{width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,var(--accent),#8b5cf6);display:grid;place-items:center;font-size:20px;box-shadow:0 4px 20px var(--accent-glow)}
-        .brand h1{font-size:1.35rem;font-weight:700;letter-spacing:-.02em}
-        .brand span{font-size:.8rem;color:var(--text-dim);font-weight:400}
-        .conn-badge{display:flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);font-size:.75rem;color:var(--text-dim);font-weight:500}
-        .conn-dot{width:8px;height:8px;border-radius:50%;background:var(--amber)}
-        .conn-dot.live{background:var(--green);box-shadow:0 0 8px rgba(34,197,94,.5);animation:pulse 2s infinite}
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 32px;
+            flex-wrap: wrap
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .brand-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            display: grid;
+            place-items: center;
+            font-size: 20px;
+            box-shadow: 0 4px 20px var(--accent-glow)
+        }
+
+        .brand h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            letter-spacing: -.02em
+        }
+
+        .brand span {
+            font-size: .8rem;
+            color: var(--text-dim);
+            font-weight: 400
+        }
+
+        .conn-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            font-size: .75rem;
+            color: var(--text-dim);
+            font-weight: 500
+        }
+
+        .conn-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--amber)
+        }
+
+        .conn-dot.live {
+            background: var(--green);
+            box-shadow: 0 0 8px rgba(34, 197, 94, .5);
+            animation: pulse 2s infinite
+        }
 
         /* Grid */
-        .grid{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
-        .grid-full{grid-column:1/-1}
+        .grid {
+            display: grid;
+            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr))
+        }
+
+        .grid-full {
+            grid-column: 1/-1
+        }
 
         /* Cards */
-        .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:22px;transition:border-color .3s,box-shadow .3s}
-        .card:hover{border-color:var(--border-light);box-shadow:0 8px 32px rgba(0,0,0,.3)}
-        .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-        .card-title{font-size:.85rem;font-weight:600;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;display:flex;align-items:center;gap:8px}
-        .card-title i{font-style:normal;font-size:1rem}
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 22px;
+            transition: border-color .3s, box-shadow .3s
+        }
+
+        .card:hover {
+            border-color: var(--border-light);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .3)
+        }
+
+        .card-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px
+        }
+
+        .card-title {
+            font-size: .85rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .card-title i {
+            font-style: normal;
+            font-size: 1rem
+        }
 
         /* Status indicator */
-        .si{display:flex;align-items:center;gap:14px;padding:14px 16px;border-radius:var(--radius-sm);background:var(--surface-2);border:1px solid var(--border);margin-bottom:12px}
-        .si-dot{width:12px;height:12px;border-radius:50%;background:var(--text-muted);flex-shrink:0;transition:all .3s}
-        .si-dot.ok{background:var(--green);box-shadow:0 0 10px rgba(34,197,94,.4)}
-        .si-dot.warn{background:var(--amber);box-shadow:0 0 10px rgba(245,158,11,.4)}
-        .si-dot.err{background:var(--red);box-shadow:0 0 10px rgba(239,68,68,.4)}
-        .si-label{font-size:1.1rem;font-weight:700}
-        .si-sub{font-size:.78rem;color:var(--text-dim);margin-top:2px}
+        .si {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 14px 16px;
+            border-radius: var(--radius-sm);
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            margin-bottom: 12px
+        }
+
+        .si-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--text-muted);
+            flex-shrink: 0;
+            transition: all .3s
+        }
+
+        .si-dot.ok {
+            background: var(--green);
+            box-shadow: 0 0 10px rgba(34, 197, 94, .4)
+        }
+
+        .si-dot.warn {
+            background: var(--amber);
+            box-shadow: 0 0 10px rgba(245, 158, 11, .4)
+        }
+
+        .si-dot.err {
+            background: var(--red);
+            box-shadow: 0 0 10px rgba(239, 68, 68, .4)
+        }
+
+        .si-label {
+            font-size: 1.1rem;
+            font-weight: 700
+        }
+
+        .si-sub {
+            font-size: .78rem;
+            color: var(--text-dim);
+            margin-top: 2px
+        }
 
         /* Outcome pill */
-        .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:999px;font-size:.78rem;font-weight:600;border:1px solid var(--border);background:var(--surface-2);color:var(--text-dim);transition:all .3s}
-        .pill.ok{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
-        .pill.warn{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
-        .pill.err{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: .78rem;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--surface-2);
+            color: var(--text-dim);
+            transition: all .3s
+        }
 
-        /* Deploy buttons */
-        .deploy-grid{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}
-        .dbtn{flex:1;min-width:100px;padding:12px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface-2);color:var(--text);font-family:inherit;font-weight:600;font-size:.85rem;cursor:pointer;transition:all .2s;text-align:center;position:relative;overflow:hidden}
-        .dbtn:hover:not(:disabled){border-color:var(--accent);background:rgba(99,102,241,.08);transform:translateY(-1px);box-shadow:0 4px 16px var(--accent-glow)}
-        .dbtn:active:not(:disabled){transform:scale(.97)}
-        .dbtn:disabled{opacity:.4;cursor:not-allowed}
-        .dbtn small{display:block;font-size:.7rem;font-weight:400;color:var(--text-dim);margin-top:3px}
-        .dbtn.v3{border-color:var(--red-border)}
-        .dbtn.v3:hover:not(:disabled){border-color:var(--red);background:var(--red-bg)}
+        .pill.ok {
+            background: var(--green-bg);
+            border-color: var(--green-border);
+            color: var(--green)
+        }
+
+        .pill.warn {
+            background: var(--amber-bg);
+            border-color: var(--amber-border);
+            color: var(--amber)
+        }
+
+        .pill.err {
+            background: var(--red-bg);
+            border-color: var(--red-border);
+            color: var(--red)
+        }
+
+        /* Simulation toggle */
+        .sim-box {
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        .sim-title {
+            font-size: .7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 8px;
+            font-weight: 600;
+        }
+        .sim-options {
+            display: flex;
+            gap: 8px;
+        }
+        .sim-btn {
+            flex: 1;
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--surface-3);
+            color: var(--text-dim);
+            font-size: .75rem;
+            cursor: pointer;
+            transition: all .2s;
+        }
+        .sim-btn.active {
+            background: var(--accent);
+            color: #fff;
+            border-color: var(--accent);
+        }
+
+        /* Success/Failure States */
+        .status-card {
+            padding: 16px;
+            border-radius: var(--radius-sm);
+            margin-top: 12px;
+            display: none;
+            animation: fadeIn .3s ease;
+        }
+        .status-card.success {
+            display: block;
+            background: var(--green-bg);
+            border: 1px solid var(--green-border);
+            color: var(--green);
+        }
+        .status-card.failure {
+            display: block;
+            background: var(--red-bg);
+            border: 1px solid var(--red-border);
+            color: var(--red);
+        }
+        .status-card-title {
+            font-weight: 700;
+            font-size: .9rem;
+            margin-bottom: 4px;
+        }
+        .status-card-desc {
+            font-size: .8rem;
+            opacity: .9;
+        }
 
         /* Generic btn */
-        .btn{padding:10px 20px;border-radius:999px;border:none;font-family:inherit;font-weight:600;font-size:.82rem;cursor:pointer;transition:all .2s;color:#fff;background:linear-gradient(135deg,var(--accent),#8b5cf6);box-shadow:0 4px 16px var(--accent-glow)}
-        .btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px var(--accent-glow)}
-        .btn:disabled{opacity:.4;cursor:not-allowed}
-        .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text-dim);box-shadow:none}
-        .btn-outline:hover:not(:disabled){border-color:var(--text-dim);color:var(--text);box-shadow:none}
-        .btn-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+        .btn {
+            padding: 10px 20px;
+            border-radius: 999px;
+            border: none;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: .82rem;
+            cursor: pointer;
+            transition: all .2s;
+            color: #fff;
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            box-shadow: 0 4px 16px var(--accent-glow)
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px var(--accent-glow)
+        }
+
+        .btn:disabled {
+            opacity: .4;
+            cursor: not-allowed
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+            box-shadow: none
+        }
+
+        .btn-outline:hover:not(:disabled) {
+            border-color: var(--text-dim);
+            color: var(--text);
+            box-shadow: none
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center
+        }
 
         /* Log viewer */
-        .logbox{background:#080c16;border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;font-family:'JetBrains Mono',monospace;font-size:.76rem;line-height:1.7;height:260px;overflow-y:auto;color:#8892b0;white-space:pre-wrap;word-break:break-all;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
-        .logbox::-webkit-scrollbar{width:6px}
-        .logbox::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-        .log-line{display:block}
-        .log-line:hover{background:rgba(99,102,241,.06)}
-        .log-ts{color:var(--text-muted)}
-        .log-err{color:var(--red)}
-        .log-result{color:var(--green);font-weight:600}
+        .logbox {
+            background: #080c16;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .76rem;
+            line-height: 1.7;
+            height: 260px;
+            overflow-y: auto;
+            color: #8892b0;
+            white-space: pre-wrap;
+            word-break: break-all;
+            scrollbar-width: thin;
+            scrollbar-color: var(--border) transparent
+        }
+
+        .logbox::-webkit-scrollbar {
+            width: 6px
+        }
+
+        .logbox::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px
+        }
+
+        .log-line {
+            display: block
+        }
+
+        .log-line:hover {
+            background: rgba(99, 102, 241, .06)
+        }
+
+        .log-ts {
+            color: var(--text-muted)
+        }
+
+        .log-err {
+            color: var(--red)
+        }
+
+        .log-result {
+            color: var(--green);
+            font-weight: 600
+        }
 
         /* Badge */
-        .badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:600;background:var(--blue-bg);color:var(--blue);border:1px solid rgba(59,130,246,.2)}
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: .72rem;
+            font-weight: 600;
+            background: var(--blue-bg);
+            color: var(--blue);
+            border: 1px solid rgba(59, 130, 246, .2)
+        }
 
-        /* Commit history */
-        .commit-list{display:grid;gap:10px}
-        .commit-item{padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--surface-2)}
-        .commit-item.latest{border-color:rgba(59,130,246,.6)}
-        .commit-item.stable{border-color:var(--green-border)}
-        .commit-top{display:flex;justify-content:space-between;gap:12px;align-items:center}
-        .commit-sha{font-family:'JetBrains Mono',monospace;font-size:.74rem;color:var(--text-dim)}
-        .commit-msg{font-size:.84rem;font-weight:600;color:var(--text)}
-        .commit-meta{margin-top:6px;font-size:.72rem;color:var(--text-dim);display:flex;justify-content:space-between;gap:12px}
-        .commit-tags{display:flex;gap:6px;flex-wrap:wrap}
-        .commit-tag{padding:2px 8px;border-radius:999px;font-size:.65rem;font-weight:600;border:1px solid var(--border);color:var(--text-dim)}
-        .commit-tag.latest{border-color:rgba(59,130,246,.6);color:var(--blue)}
-        .commit-tag.stable{border-color:var(--green-border);color:var(--green)}
+        /* Commit History */
+        .commit-list {
+            margin-top: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 250px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+        .commit-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .commit-list::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 2px;
+        }
+        .commit-item {
+            padding: 10px;
+            background: var(--surface-2);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .commit-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .commit-sha {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: .75rem;
+            color: var(--accent);
+            font-weight: 600;
+        }
+        .commit-author {
+            font-size: .7rem;
+            color: var(--text-muted);
+        }
+        .commit-msg {
+            font-size: .8rem;
+            color: var(--text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .commit-status {
+            font-size: .7rem;
+            display: inline-block;
+            margin-top: 4px;
+        }
 
         /* Meta row */
-        .meta{font-size:.78rem;color:var(--text-dim);margin-top:6px;line-height:1.6}
+        .meta {
+            font-size: .78rem;
+            color: var(--text-dim);
+            margin-top: 6px;
+            line-height: 1.6
+        }
 
         /* Footer */
-        .footer{margin-top:40px;text-align:center;color:var(--text-muted);font-size:.75rem;padding:16px;border-top:1px solid var(--border)}
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: .75rem;
+            padding: 16px;
+            border-top: 1px solid var(--border)
+        }
 
-        /* Deploy Latest btn */
-        .btn-latest{width:100%;padding:14px;border-radius:var(--radius-sm);border:1px dashed var(--accent);background:rgba(99,102,241,.06);color:var(--accent);font-family:inherit;font-weight:700;font-size:.9rem;cursor:pointer;transition:all .2s;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px}
-        .btn-latest:hover:not(:disabled){background:rgba(99,102,241,.14);border-style:solid;transform:translateY(-1px);box-shadow:0 4px 20px var(--accent-glow)}
-        .btn-latest:disabled{opacity:.4;cursor:not-allowed}
-        .btn-latest .sha{font-family:'JetBrains Mono',monospace;font-size:.75rem;opacity:.8}
+        @keyframes pulse {
 
-        /* Modal overlay */
-        .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:none;place-items:center;animation:fadeIn .2s ease}
-        .modal-overlay.show{display:grid}
-        .modal{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:32px;max-width:480px;width:90%;box-shadow:0 24px 64px rgba(0,0,0,.5);animation:modalIn .3s ease}
-        .modal-icon{width:56px;height:56px;border-radius:50%;display:grid;place-items:center;font-size:28px;margin:0 auto 16px}
-        .modal-icon.fail{background:var(--red-bg);border:2px solid var(--red-border)}
-        .modal-icon.ok{background:var(--green-bg);border:2px solid var(--green-border)}
-        .modal h2{text-align:center;font-size:1.2rem;margin-bottom:8px}
-        .modal p{text-align:center;color:var(--text-dim);font-size:.85rem;line-height:1.6;margin-bottom:16px}
-        .modal .commit-box{background:var(--surface-2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px 16px;margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:.78rem;display:flex;align-items:center;gap:10px}
-        .commit-box .label{color:var(--text-muted);font-size:.68rem;text-transform:uppercase;letter-spacing:.06em;min-width:55px}
-        .commit-box .sha{color:var(--amber);font-weight:600}
-        .commit-box .msg{color:var(--text-dim);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-        .commit-box.stable .sha{color:var(--green)}
-        .modal .btn-close{display:block;margin:16px auto 0;padding:10px 32px}
-        @keyframes modalIn{from{opacity:0;transform:scale(.92) translateY(12px)}to{opacity:1;transform:none}}
+            0%,
+            100% {
+                opacity: 1
+            }
 
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
-        .card{animation:fadeIn .5s ease both}
-        .card:nth-child(2){animation-delay:.07s}
-        .card:nth-child(3){animation-delay:.14s}
-        .card:nth-child(4){animation-delay:.21s}
+            50% {
+                opacity: .5
+            }
+        }
 
-        @media(max-width:720px){.grid{grid-template-columns:1fr}.topbar{flex-direction:column;align-items:flex-start}}
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px)
+            }
+
+            to {
+                opacity: 1;
+                transform: none
+            }
+        }
+
+        .card {
+            animation: fadeIn .5s ease both
+        }
+
+        .card:nth-child(2) {
+            animation-delay: .07s
+        }
+
+        .card:nth-child(3) {
+            animation-delay: .14s
+        }
+
+        .card:nth-child(4) {
+            animation-delay: .21s
+        }
+
+        @media(max-width:720px) {
+            .grid {
+                grid-template-columns: 1fr
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start
+            }
+        }
     </style>
 </head>
+
 <body>
-<div class="shell">
-    <div class="topbar">
-        <div class="brand">
-            <div class="brand-icon">⟲</div>
-            <div><h1>Rollback Dashboard</h1><span>DevOps Deployment Control Plane</span></div>
-        </div>
-        <div class="conn-badge"><span id="conn-dot" class="conn-dot"></span><span id="conn-label">Connecting…</span></div>
-    </div>
-
-    <section class="grid">
-        <!-- Release Summary -->
-        <div class="card grid-full">
-            <div class="card-head"><div class="card-title"><i>🧭</i> Release Summary</div></div>
-            <div class="si">
-                <span id="release-dot" class="si-dot"></span>
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-icon">⟲</div>
                 <div>
-                    <div id="release-status" class="si-label">Checking…</div>
-                    <div id="release-meta" class="si-sub">Latest commit: n/a</div>
-                    <div id="release-rollback" class="si-sub">Rollback: n/a</div>
+                    <h1>Rollback Dashboard</h1><span>DevOps Deployment Control Plane</span>
                 </div>
             </div>
-        </div>
-
-        <!-- App Status -->
-        <div class="card">
-            <div class="card-head"><div class="card-title"><i>📡</i> Application Health</div><span id="active-version" class="badge">unknown</span></div>
-            <div class="si">
-                <span id="status-dot" class="si-dot"></span>
-                <div><div id="status" class="si-label">Checking…</div><div id="status-meta" class="si-sub">Waiting for response</div></div>
+            <div class="conn-badge"><span id="conn-dot" class="conn-dot"></span><span id="conn-label">Connecting…</span>
             </div>
         </div>
 
-        <!-- Jenkins -->
-        <div class="card">
-            <div class="card-head"><div class="card-title"><i>⚙️</i> Jenkins Pipeline</div><span id="jenkins-job" class="badge">unknown</span></div>
-            <div class="si">
-                <span id="jenkins-dot" class="si-dot"></span>
-                <div><div id="jenkins-status" class="si-label">Checking…</div><div id="jenkins-meta" class="si-sub">Waiting for Jenkins</div></div>
-            </div>
-            <div class="btn-row">
-                <button id="jenkins-build" class="btn">Trigger Build</button>
-                <a id="jenkins-open" class="btn btn-outline" href="#" target="_blank" rel="noreferrer">Open Jenkins ↗</a>
-            </div>
-            <div class="meta">
-                <div id="jenkins-last">Last build: n/a</div>
-                <div id="jenkins-outcome-wrap" style="margin-top:6px"><span id="jenkins-outcome" class="pill">unknown</span></div>
-            </div>
-            <div class="meta">
-                <div id="git-latest">Latest commit: n/a</div>
-                <div id="git-stability-wrap" style="margin-top:6px"><span id="git-stability" class="pill">unknown</span></div>
-            </div>
-        </div>
-
-        <!-- Git History -->
-        <div class="card">
-            <div class="card-head"><div class="card-title"><i>🧾</i> Commit History</div><span id="git-branch" class="badge">unknown</span></div>
-            <div id="git-history" class="commit-list">Loading commits…</div>
-        </div>
-    </section>
-
-    <div class="footer">Smart Rollback — keep the app running in Docker while the controller triggers deployments</div>
-</div>
-
-<!-- Build Status Modal -->
-<div id="build-modal" class="modal-overlay">
-    <div class="modal">
-        <div id="modal-icon" class="modal-icon">✓</div>
-        <h2 id="modal-title">Build Status</h2>
-        <p id="modal-desc">Build result summary.</p>
-        <div class="commit-box"><span class="label">Latest</span><span id="modal-latest-sha" class="sha">—</span><span id="modal-latest-msg" class="msg"></span></div>
-        <div id="modal-stable-row" class="commit-box stable"><span class="label">Stable</span><span id="modal-stable-sha" class="sha">—</span><span id="modal-stable-msg" class="msg"></span></div>
-        <button id="modal-close" class="btn btn-close">Dismiss</button>
-    </div>
-</div>
-
-<script>
-const BASE = location.origin;
-const APP_URL = 'http://localhost:3000/status';
-
-const $ = id => document.getElementById(id);
-
-const statusDot=$('status-dot'), statusText=$('status'), statusMeta=$('status-meta'), activeVersion=$('active-version');
-const jenkinsDot=$('jenkins-dot'), jenkinsStatus=$('jenkins-status'), jenkinsMeta=$('jenkins-meta');
-const jenkinsJob=$('jenkins-job'), jenkinsLast=$('jenkins-last'), jenkinsOutcome=$('jenkins-outcome');
-const jenkinsBuildBtn=$('jenkins-build'), jenkinsOpen=$('jenkins-open');
-const gitLatest=$('git-latest'), gitStability=$('git-stability');
-const gitHistory=$('git-history'), gitBranch=$('git-branch');
-const releaseDot=$('release-dot'), releaseStatus=$('release-status'), releaseMeta=$('release-meta'), releaseRollback=$('release-rollback');
-const connDot=$('conn-dot'), connLabel=$('conn-label');
-
-const buildModal=$('build-modal');
-const modalIcon=$('modal-icon');
-const modalTitle=$('modal-title');
-const modalDesc=$('modal-desc');
-const modalLatestSha=$('modal-latest-sha');
-const modalLatestMsg=$('modal-latest-msg');
-const modalStableRow=$('modal-stable-row');
-const modalStableSha=$('modal-stable-sha');
-const modalStableMsg=$('modal-stable-msg');
-
-let latestJenkins=null, latestGit=null, latestHistory=null, controllerOk=false;
-
-function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
-
-function setConn(ok){controllerOk=ok;connDot.className='conn-dot'+(ok?' live':'');connLabel.textContent=ok?'Controller online':'Controller offline'}
-
-function updateConnection(ok){
-    if(ok){setConn(true);return;}
-    const anyOk=(latestJenkins&&latestJenkins.ok)||(latestGit&&latestGit.ok)||(latestHistory&&latestHistory.ok);
-    setConn(!!anyOk);
-}
-
-function dotClass(type){return 'si-dot'+(type==='ok'?' ok':type==='warn'?' warn':type==='err'?' err':'')}
-function pillClass(type){return 'pill'+(type==='ok'?' ok':type==='warn'?' warn':type==='err'?' err':'')}
-
-function showBuildModal(mode, latestSha, latestMsg, stableSha, stableMsg){
-    const isSuccess = mode === 'success';
-    modalIcon.className = `modal-icon ${isSuccess ? 'ok' : 'fail'}`;
-    modalIcon.textContent = isSuccess ? '✓' : '⚠️';
-    modalTitle.textContent = isSuccess ? 'Build Successful' : 'Build Failed — Rolled Back';
-    modalDesc.textContent = isSuccess
-        ? 'Latest commit built successfully and is now stable.'
-        : 'Latest commit failed. Rolled back to the last stable commit.';
-    modalLatestSha.textContent = latestSha || 'unknown';
-    modalLatestMsg.textContent = latestMsg || '';
-
-    if (isSuccess) {
-        modalStableRow.style.display = 'none';
-    } else {
-        modalStableRow.style.display = 'flex';
-        modalStableSha.textContent = stableSha || 'none';
-        modalStableMsg.textContent = stableMsg || 'no stable commit found';
-    }
-
-    buildModal.classList.add('show');
-}
-
-$('modal-close').addEventListener('click',()=>buildModal.classList.remove('show'));
-buildModal.addEventListener('click',e=>{if(e.target===buildModal)buildModal.classList.remove('show')});
-
-// --- App Health ---
-async function checkApp(){
-    try{
-        const r=await fetch(APP_URL,{cache:'no-store'});
-        if(!r.ok) throw 0;
-        const d=await r.json();
-        statusDot.className=dotClass('ok');
-        statusText.textContent='Healthy';
-        statusMeta.textContent='Checked '+new Date(d.time).toLocaleTimeString();
-        activeVersion.textContent=d.version;
-    }catch{
-        statusDot.className=dotClass('err');
-        statusText.textContent='Down';
-        statusMeta.textContent='No response from app';
-        activeVersion.textContent='unknown';
-    }
-}
-
-// --- Git History ---
-function renderGitHistory(history, jd, gd){
-    if(!history||!history.ok||!Array.isArray(history.commits)){
-        gitHistory.textContent='Unable to load commits.';return;
-    }
-    const stableFull=jd?.lastSuccessfulCommit?.id||null;
-    const latestFull=gd?.fullSha||null;
-    gitHistory.innerHTML=history.commits.map(c=>{
-        const isLatest=latestFull&&c.fullSha===latestFull;
-        const isStable=stableFull&&c.fullSha===stableFull;
-        const tags=[];
-        if(isLatest)tags.push('<span class="commit-tag latest">latest</span>');
-        if(isStable)tags.push('<span class="commit-tag stable">stable</span>');
-        const dateLabel=c.date?new Date(c.date).toLocaleString():'unknown time';
-        return `
-            <div class="commit-item${isLatest?' latest':''}${isStable?' stable':''}">
-                <div class="commit-top">
+        <section class="grid">
+            <!-- Release Summary -->
+            <div class="card grid-full">
+                <div class="card-head">
+                    <div class="card-title"><i>🧭</i> Release Summary</div>
+                </div>
+                <div class="si">
+                    <span id="release-dot" class="si-dot"></span>
                     <div>
-                        <div class="commit-msg">${esc(c.message||'no message')}</div>
-                        <div class="commit-sha">${c.shortSha||'unknown'}</div>
+                        <div id="release-status" class="si-label">Checking…</div>
+                        <div id="release-meta" class="si-sub">Latest commit: n/a</div>
+                        <div id="release-rollback" class="si-sub">Rollback: n/a</div>
                     </div>
-                    <div class="commit-tags">${tags.join('')}</div>
-                </div>
-                <div class="commit-meta">
-                    <span>${esc(c.author||'unknown author')}</span>
-                    <span>${dateLabel}</span>
                 </div>
             </div>
-        `;
-    }).join('');
-}
 
-function maybeShowBuildModal(jd, gd){
-    if(!jd||!jd.ok||!jd.lastBuild){return;}
-    const lb=jd.lastBuild;
-    if(lb.building){return;}
-    const key=`${lb.number||'n/a'}-${lb.result||'UNKNOWN'}`;
-    const stored=localStorage.getItem('rollback-dashboard-last-build');
-    if(stored===key){return;}
-    localStorage.setItem('rollback-dashboard-last-build', key);
+            <!-- App Status -->
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-title"><i>📡</i> Application Health</div><span id="active-version"
+                        class="badge">unknown</span>
+                </div>
+                <div class="si">
+                    <span id="status-dot" class="si-dot"></span>
+                    <div>
+                        <div id="status" class="si-label">Checking…</div>
+                        <div id="status-meta" class="si-sub">Waiting for response</div>
+                    </div>
+                </div>
+            </div>
 
-    const latestSha=gd?.shortSha||(jd.lastCommit?.id?jd.lastCommit.id.slice(0,7):'unknown');
-    const latestMsg=gd?.message||jd.lastCommit?.message||'';
+            <!-- Jenkins -->
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-title"><i>⚙️</i> Jenkins Pipeline</div><span id="jenkins-job"
+                        class="badge">unknown</span>
+                </div>
+                <div class="si">
+                    <span id="jenkins-dot" class="si-dot"></span>
+                    <div>
+                        <div id="jenkins-status" class="si-label">Checking…</div>
+                        <div id="jenkins-meta" class="si-sub">Waiting for Jenkins</div>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button id="jenkins-build" class="btn">Trigger Build</button>
+                    <a id="jenkins-open" class="btn btn-outline" href="#" target="_blank" rel="noreferrer">Open Jenkins
+                        ↗</a>
+                </div>
+                <div class="meta">
+                    <div id="jenkins-last">Last build: n/a</div>
+                    <div id="jenkins-outcome-wrap" style="margin-top:6px"><span id="jenkins-outcome"
+                            class="pill">unknown</span></div>
+                </div>
+            </div>
 
-    if(lb.result==='SUCCESS'){
-        showBuildModal('success', latestSha, latestMsg, null, null);
-        return;
-    }
+            <!-- Deploy Control -->
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-title"><i>🚀</i> Deploy Control</div><span id="deploy-outcome" class="pill">idle</span>
+                </div>
+                
+                <div class="sim-box" style="margin-bottom: 8px;">
+                    <div class="sim-title">Deployment Target</div>
+                    <div class="sim-options">
+                        <button class="target-btn active" data-target="local">Local Script</button>
+                        <button class="target-btn" data-target="jenkins">Jenkins Pipeline</button>
+                    </div>
+                </div>
 
-    if(lb.result==='FAILURE'||lb.result==='ABORTED'||lb.result==='UNSTABLE'){
-        const stableSha=jd.lastSuccessfulCommit?.id?jd.lastSuccessfulCommit.id.slice(0,7):null;
-        const stableMsg=jd.lastSuccessfulCommit?.message||'';
-        showBuildModal('failure', latestSha, latestMsg, stableSha, stableMsg);
-    }
-}
+                <div class="sim-box">
+                    <div class="sim-title">Build Simulation Setting</div>
+                    <div class="sim-options">
+                        <button class="sim-btn active" data-app="app_v2.js">Stable Build</button>
+                        <button class="sim-btn" data-app="app_v3.js">Broken Build</button>
+                    </div>
+                </div>
 
-// --- Jenkins ---
-function renderJenkins(d){
-    if(!d||!d.ok){
-        jenkinsDot.className=dotClass('err');jenkinsStatus.textContent='Unavailable';
-        jenkinsMeta.textContent=d?.message||'Not reachable';jenkinsJob.textContent='unknown';
-        jenkinsLast.textContent='Last build: n/a';
-        jenkinsOutcome.className=pillClass('err');jenkinsOutcome.textContent='unknown';
-        jenkinsBuildBtn.disabled=true;return;
-    }
-    jenkinsBuildBtn.disabled=false;
-    jenkinsJob.textContent=d.job?.name||'unknown';
-    jenkinsOpen.href=d.job?.url||d.jenkinsUrl;
-    const lb=d.lastBuild||{};
-    const num=lb.number?'#'+lb.number:'n/a';
-    const res=lb.building?'RUNNING':(lb.result||'UNKNOWN');
-    const tm=lb.timestamp?new Date(lb.timestamp).toLocaleTimeString():'n/a';
-    jenkinsLast.textContent=`Last build: ${num} · ${res} · ${tm}`;
-    jenkinsMeta.textContent=d.lastCommit?.message?('Commit: '+d.lastCommit.message):('Jenkins: '+d.jenkinsUrl);
-    if(lb.building){jenkinsDot.className=dotClass('warn');jenkinsStatus.textContent='Running';jenkinsOutcome.className=pillClass('warn');jenkinsOutcome.textContent='running';return}
-    if(lb.result==='SUCCESS'){jenkinsDot.className=dotClass('ok');jenkinsStatus.textContent='Success';jenkinsOutcome.className=pillClass('ok');jenkinsOutcome.textContent='success';return}
-    if(lb.result==='UNSTABLE'){jenkinsDot.className=dotClass('warn');jenkinsStatus.textContent='Unstable';jenkinsOutcome.className=pillClass('warn');jenkinsOutcome.textContent='unstable';return}
-    if(lb.result==='FAILURE'||lb.result==='ABORTED'){jenkinsDot.className=dotClass('err');jenkinsStatus.textContent=lb.result==='ABORTED'?'Aborted':'Failed';jenkinsOutcome.className=pillClass('err');jenkinsOutcome.textContent=lb.result.toLowerCase();return}
-    jenkinsDot.className=dotClass('');jenkinsStatus.textContent='Idle';jenkinsOutcome.className=pillClass('');jenkinsOutcome.textContent='idle';
-}
+                <div class="si">
+                    <span id="deploy-dot" class="si-dot"></span>
+                    <div>
+                        <div id="deploy-status" class="si-label">Ready</div>
+                        <div id="deploy-meta" class="si-sub">Latest commit detected</div>
+                    </div>
+                </div>
 
-function renderGit(jd,gd){
-    if(!gd||!gd.ok){gitLatest.textContent='Latest commit: unavailable';gitStability.className=pillClass('err');gitStability.textContent='unknown';gitBranch.textContent='unknown';return}
-    gitBranch.textContent=gd.branch||'unknown';
-    gitLatest.textContent=`Latest commit: ${gd.shortSha||'n/a'} — ${gd.message||'no message'}`;
-    if(!jd||!jd.ok||!jd.lastBuild){gitStability.className=pillClass('');gitStability.textContent='unknown';return}
-    const lb=jd.lastBuild;
-    if(lb.building){gitStability.className=pillClass('warn');gitStability.textContent='building';return}
-    if(lb.result==='SUCCESS'){gitStability.className=pillClass('ok');gitStability.textContent='stable @ '+gd.shortSha;return}
-    if(lb.result==='UNSTABLE'){gitStability.className=pillClass('warn');gitStability.textContent='unstable';return}
-    if(lb.result==='FAILURE'||lb.result==='ABORTED'){
-        if(jd.lastSuccessfulCommit?.id){
-            const stableMsg=jd.lastSuccessfulCommit.message||'stable';
-            gitStability.className=pillClass('warn');
-            gitStability.textContent=`rolled back to ${jd.lastSuccessfulCommit.id.slice(0,7)} (${stableMsg})`;
-            return;
+                <button id="btn-deploy-latest" class="btn" style="width: 100%; padding: 16px; font-size: 1rem;">Deploy Latest Commit</button>
+                
+                <div id="status-card" class="status-card">
+                    <div id="status-card-title" class="status-card-title">Build Successful</div>
+                    <div id="status-card-desc" class="status-card-desc">Commit 582d379 is now live.</div>
+                </div>
+
+                <div id="deploy-message" class="meta" style="margin-top: 12px; text-align: center;">Ready to deploy from GitHub</div>
+            </div>
+
+            <!-- Commit History -->
+            <div class="card">
+                <div class="card-head">
+                    <div class="card-title"><i>🧾</i> Commit History</div><span id="git-branch" class="badge">unknown</span>
+                </div>
+                <div id="git-history" class="commit-list">Loading commits…</div>
+            </div>
+
+            <!-- Logs -->
+            <div class="card grid-full">
+                <div class="card-head">
+                    <div class="card-title"><i>📋</i> Live Logs</div><button id="clear-logs" class="btn btn-outline"
+                        style="padding:5px 12px;font-size:.72rem">Clear</button>
+                </div>
+                <div id="logs" class="logbox">Waiting for output…</div>
+            </div>
+        </section>
+
+        <div class="footer">Smart Rollback — keep the app running in Docker while the controller triggers deployments
+        </div>
+    </div>
+
+    <script>
+        const BASE = location.origin;
+        const APP_URL = 'http://localhost:3000/status';
+
+        const $ = id => document.getElementById(id);
+
+        const statusDot = $('status-dot'), statusText = $('status'), statusMeta = $('status-meta'), activeVersion = $('active-version');
+        const deployDot = $('deploy-dot'), deployStatus = $('deploy-status'), deployMeta = $('deploy-meta');
+        const deployMessage = $('deploy-message'), deployOutcome = $('deploy-outcome');
+        const jenkinsDot = $('jenkins-dot'), jenkinsStatus = $('jenkins-status'), jenkinsMeta = $('jenkins-meta');
+        const jenkinsJob = $('jenkins-job'), jenkinsLast = $('jenkins-last'), jenkinsOutcome = $('jenkins-outcome');
+        const jenkinsBuildBtn = $('jenkins-build'), jenkinsOpen = $('jenkins-open');
+        const releaseDot = $('release-dot'), releaseStatus = $('release-status'), releaseMeta = $('release-meta'), releaseRollback = $('release-rollback');
+        const gitHistory = $('git-history'), gitBranch = $('git-branch');
+        const logsEl = $('logs'), connDot = $('conn-dot'), connLabel = $('conn-label');
+        const btnDeployLatest = $('btn-deploy-latest');
+        const statusCard = $('status-card'), statusCardTitle = $('status-card-title'), statusCardDesc = $('status-card-desc');
+        const simBtns = document.querySelectorAll('.sim-btn');
+        const targetBtns = document.querySelectorAll('.target-btn');
+
+        let latestJenkins = null, latestGit = null, controllerOk = false;
+        let currentAppFile = 'app_v2.js';
+        let currentBackend = 'local';
+
+        function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }
+
+        function setConn(ok) { controllerOk = ok; connDot.className = 'conn-dot' + (ok ? ' live' : ''); connLabel.textContent = ok ? 'Controller online' : 'Controller offline' }
+
+        function dotClass(type) { return 'si-dot' + (type === 'ok' ? ' ok' : type === 'warn' ? ' warn' : type === 'err' ? ' err' : '') }
+        function pillClass(type) { return 'pill' + (type === 'ok' ? ' ok' : type === 'warn' ? ' warn' : type === 'err' ? ' err' : '') }
+
+        function setDeployDisabled(d) { 
+            btnDeployLatest.disabled = d;
+            simBtns.forEach(b => b.disabled = d);
         }
-        gitStability.className=pillClass('err');gitStability.textContent='failed (no rollback)';return;
-    }
-    gitStability.className=pillClass('');gitStability.textContent='unknown';
-}
 
-function renderRelease(jd, gd){
-    if(!gd||!gd.ok){
-        releaseDot.className=dotClass('err');
-        releaseStatus.textContent='Unknown';
-        releaseMeta.textContent='Latest commit: unavailable';
-        releaseRollback.textContent='Rollback: n/a';
-        return;
-    }
-
-    releaseMeta.textContent=`Latest commit: ${gd.shortSha||'n/a'} — ${gd.message||'no message'}`;
-
-    if(!jd||!jd.ok||!jd.lastBuild){
-        releaseDot.className=dotClass('warn');
-        releaseStatus.textContent='Build status unknown';
-        releaseRollback.textContent='Rollback: Jenkins data unavailable';
-        return;
-    }
-
-    const lb=jd.lastBuild;
-    if(lb.building){
-        releaseDot.className=dotClass('warn');
-        releaseStatus.textContent='Building latest commit';
-        releaseRollback.textContent='Rollback: waiting for build';
-        return;
-    }
-
-    if(lb.result==='SUCCESS'){
-        releaseDot.className=dotClass('ok');
-        releaseStatus.textContent='Stable';
-        releaseRollback.textContent=`Rollback: not needed (stable @ ${gd.shortSha||'n/a'})`;
-        return;
-    }
-
-    if(lb.result==='UNSTABLE'){
-        releaseDot.className=dotClass('warn');
-        releaseStatus.textContent='Unstable';
-        releaseRollback.textContent='Rollback: review recommended';
-        return;
-    }
-
-    if(lb.result==='FAILURE'||lb.result==='ABORTED'){
-        releaseDot.className=dotClass('err');
-        releaseStatus.textContent='Failed';
-        if(jd.lastSuccessfulCommit?.id){
-            const stableMsg=jd.lastSuccessfulCommit.message||'stable';
-            releaseRollback.textContent=`Rollback: rolled back to ${jd.lastSuccessfulCommit.id.slice(0,7)} (${stableMsg})`;
-        } else {
-            releaseRollback.textContent='Rollback: no stable commit found';
+        // --- App Health ---
+        async function checkApp() {
+            try {
+                const r = await fetch(APP_URL, { cache: 'no-store' });
+                if (!r.ok) throw 0;
+                const d = await r.json();
+                statusDot.className = dotClass('ok');
+                statusText.textContent = 'Healthy';
+                statusMeta.textContent = 'Checked ' + new Date(d.time).toLocaleTimeString();
+                activeVersion.textContent = d.version;
+            } catch {
+                statusDot.className = dotClass('err');
+                statusText.textContent = 'Down';
+                statusMeta.textContent = 'No response from app';
+                activeVersion.textContent = 'unknown';
+            }
         }
-        return;
-    }
 
-    releaseDot.className=dotClass('');
-    releaseStatus.textContent='Idle';
-    releaseRollback.textContent='Rollback: n/a';
-}
+        // --- Deploy Status ---
+        function renderDeploy(s) {
+            if (currentBackend === 'jenkins') {
+                deployDot.className = dotClass('');
+                deployStatus.textContent = 'Delegating';
+                deployMeta.textContent = 'Tracking via Jenkins Pipeline card';
+                deployMessage.textContent = 'Jenkins handles the deployment';
+                deployOutcome.className = pillClass(''); deployOutcome.textContent = 'jenkins';
+                statusCard.style.display = 'none';
+                setDeployDisabled(false);
+                return;
+            }
 
-async function refreshJenkins(){
-    try{
-        const r=await fetch('/jenkins/status',{cache:'no-store'});
-        if(!r.ok)throw 0;
-        const d=await r.json();
-        latestJenkins=d;
-        renderJenkins(d);
-        renderGit(latestJenkins,latestGit);
-        renderRelease(latestJenkins,latestGit);
-        renderGitHistory(latestHistory,latestJenkins,latestGit);
-        maybeShowBuildModal(latestJenkins,latestGit);
-        updateConnection(true);
-    }
-    catch{
-        latestJenkins={ok:false};
-        renderJenkins(latestJenkins);
-        renderGit(latestJenkins,latestGit);
-        renderRelease(latestJenkins,latestGit);
-        renderGitHistory(latestHistory,latestJenkins,latestGit);
-        updateConnection(false);
-    }
-}
+            statusCard.style.display = 'block';
+            const target = s.commitSha ? 'Commit ' + s.commitSha : 'Latest';
+            const outcomeText = s.lastMessage || s.lastResult || 'idle';
+            
+            if (s.running) {
+                deployDot.className = dotClass('warn');
+                deployStatus.textContent = 'Deploying…';
+                deployMeta.textContent = target + ' • started ' + new Date(s.startedAt).toLocaleTimeString();
+                deployMessage.textContent = 'Deployment in progress';
+                deployOutcome.className = pillClass('warn'); deployOutcome.textContent = 'running';
+                statusCard.className = 'status-card';
+                setDeployDisabled(true); return;
+            }
+            
+            setDeployDisabled(false);
+            
+            if (s.lastResult === 'success') { 
+                deployDot.className = dotClass('ok'); 
+                deployStatus.textContent = 'Success';
+                statusCard.className = 'status-card success';
+                statusCardTitle.textContent = 'Build Successful';
+                statusCardDesc.textContent = `Commit ${s.commitSha || 'latest'} is now live and healthy.`;
+            }
+            else if (s.lastResult === 'failed') { 
+                deployDot.className = dotClass('err'); 
+                deployStatus.textContent = 'Failed';
+                
+                if (s.rollbackTriggered) {
+                    statusCard.className = 'status-card failure';
+                    statusCardTitle.textContent = 'Bad Build - Rolling Back';
+                    statusCardDesc.textContent = `Commit ${s.commitSha || 'unknown'} failed. Reverted to last good build.`;
+                } else {
+                    statusCard.className = 'status-card failure';
+                    statusCardTitle.textContent = 'Build Failed';
+                    statusCardDesc.textContent = `Deployment of ${s.commitSha || 'commit'} failed. Check logs.`;
+                }
+            }
+            else { 
+                deployDot.className = dotClass(''); 
+                deployStatus.textContent = 'Ready';
+                statusCard.className = 'status-card';
+            }
+            
+            const fin = s.finishedAt ? new Date(s.finishedAt).toLocaleTimeString() : 'n/a';
+            deployMeta.textContent = target + ' • finished ' + fin;
+            deployMessage.textContent = 'System ready for next deployment';
+            const tone = outcomeText.toLowerCase().includes('rolled back') ? 'warn' : outcomeText.toLowerCase().includes('deployed') ? 'ok' : s.lastResult === 'failed' ? 'err' : '';
+            deployOutcome.className = pillClass(tone); deployOutcome.textContent = outcomeText;
+        }
 
-async function refreshGit(){
-    try{
-        const r=await fetch('/git/status',{cache:'no-store'});
-        if(!r.ok)throw 0;
-        latestGit=await r.json();
-        renderGit(latestJenkins,latestGit);
-        renderRelease(latestJenkins,latestGit);
-        renderGitHistory(latestHistory,latestJenkins,latestGit);
-        updateConnection(true);
-    }
-    catch{
-        latestGit={ok:false};
-        renderGit(latestJenkins,latestGit);
-        renderRelease(latestJenkins,latestGit);
-        renderGitHistory(latestHistory,latestJenkins,latestGit);
-        updateConnection(false);
-    }
-}
+        async function refreshDeploy() {
+            try { const r = await fetch('/deploy/status', { cache: 'no-store' }); if (!r.ok) throw 0; setConn(true); renderDeploy(await r.json()) }
+            catch { setConn(false); deployDot.className = dotClass('err'); deployStatus.textContent = 'Offline'; deployMeta.textContent = 'Controller not reachable'; setDeployDisabled(true) }
+        }
 
-async function refreshGitHistory(){
-    try{
-        const r=await fetch('/git/history?limit=8',{cache:'no-store'});
-        if(!r.ok)throw 0;
-        latestHistory=await r.json();
-        renderGitHistory(latestHistory,latestJenkins,latestGit);
-        updateConnection(true);
-    }
-    catch{
-        latestHistory={ok:false};
-        renderGitHistory(latestHistory,latestJenkins,latestGit);
-        updateConnection(false);
-    }
-}
+        // --- Logs ---
+        async function refreshLogs() {
+            try {
+                const r = await fetch('/deploy/logs?limit=200', { cache: 'no-store' }); if (!r.ok) throw 0;
+                const d = await r.json();
+                if (!d.lines || !d.lines.length) { logsEl.textContent = 'No logs yet.'; return }
+                logsEl.innerHTML = d.lines.map(l => {
+                    const safe = esc(l);
+                    if (l.includes('ERROR')) return `<span class="log-line log-err">${safe}</span>`;
+                    if (l.includes('RESULT:')) return `<span class="log-line log-result">${safe}</span>`;
+                    return `<span class="log-line">${safe}</span>`;
+                }).join('\n');
+                logsEl.scrollTop = logsEl.scrollHeight;
+            } catch { logsEl.textContent = 'Unable to load logs.' }
+        }
 
-// --- Actions ---
-jenkinsBuildBtn.addEventListener('click',async()=>{
-    jenkinsBuildBtn.disabled=true;jenkinsMeta.textContent='Triggering…';
-    try{const r=await fetch('/jenkins/build',{method:'POST'});jenkinsMeta.textContent=r.ok?'Build triggered — waiting…':'Failed to trigger'}
-    catch{jenkinsMeta.textContent='Cannot reach Jenkins'}
-    finally{setTimeout(refreshJenkins,1500)}
-});
+        // --- Jenkins ---
+        function renderJenkins(d) {
+            if (!d || !d.ok) {
+                jenkinsDot.className = dotClass('err'); jenkinsStatus.textContent = 'Unavailable';
+                jenkinsMeta.textContent = d?.message || 'Not reachable'; jenkinsJob.textContent = 'unknown';
+                jenkinsLast.textContent = 'Last build: n/a';
+                jenkinsOutcome.className = pillClass('err'); jenkinsOutcome.textContent = 'unknown';
+                jenkinsBuildBtn.disabled = true; return;
+            }
+            jenkinsBuildBtn.disabled = false;
+            jenkinsJob.textContent = d.job?.name || 'unknown';
+            jenkinsOpen.href = d.job?.url || d.jenkinsUrl;
+            const lb = d.lastBuild || {};
+            const num = lb.number ? '#' + lb.number : 'n/a';
+            const res = lb.building ? 'RUNNING' : (lb.result || 'UNKNOWN');
+            const tm = lb.timestamp ? new Date(lb.timestamp).toLocaleTimeString() : 'n/a';
+            jenkinsLast.textContent = `Last build: ${num} · ${res} · ${tm}`;
+            jenkinsMeta.textContent = d.lastCommit?.message ? ('Commit: ' + d.lastCommit.message) : ('Jenkins: ' + d.jenkinsUrl);
+            if (lb.building) { jenkinsDot.className = dotClass('warn'); jenkinsStatus.textContent = 'Running'; jenkinsOutcome.className = pillClass('warn'); jenkinsOutcome.textContent = 'running'; return }
+            if (lb.result === 'SUCCESS') { jenkinsDot.className = dotClass('ok'); jenkinsStatus.textContent = 'Success'; jenkinsOutcome.className = pillClass('ok'); jenkinsOutcome.textContent = 'success'; return }
+            if (lb.result === 'UNSTABLE') { jenkinsDot.className = dotClass('warn'); jenkinsStatus.textContent = 'Unstable'; jenkinsOutcome.className = pillClass('warn'); jenkinsOutcome.textContent = 'unstable'; return }
+            if (lb.result === 'FAILURE' || lb.result === 'ABORTED') { jenkinsDot.className = dotClass('err'); jenkinsStatus.textContent = lb.result === 'ABORTED' ? 'Aborted' : 'Failed'; jenkinsOutcome.className = pillClass('err'); jenkinsOutcome.textContent = lb.result.toLowerCase(); return }
+            jenkinsDot.className = dotClass(''); jenkinsStatus.textContent = 'Idle'; jenkinsOutcome.className = pillClass(''); jenkinsOutcome.textContent = 'idle';
+        }
 
-// --- Init ---
-checkApp();refreshJenkins();refreshGit();refreshGitHistory();
-setInterval(()=>{checkApp();refreshJenkins();refreshGit();refreshGitHistory()},4000);
-</script>
+        function renderGit(jd, gd) {
+            // Function no longer needed, logic moved to Commit History
+        }
+
+        function renderRelease(jd, gd) {
+            if (!gd || !gd.ok) {
+                releaseDot.className = dotClass('err');
+                releaseStatus.textContent = 'Unknown';
+                releaseMeta.textContent = 'Latest commit: unavailable';
+                releaseRollback.textContent = 'Rollback: n/a';
+                return;
+            }
+
+            releaseMeta.textContent = `Latest commit: ${gd.shortSha || 'n/a'} — ${gd.message || 'no message'}`;
+
+            if (!jd || !jd.ok || !jd.lastBuild) {
+                releaseDot.className = dotClass('warn');
+                releaseStatus.textContent = 'Build status unknown';
+                releaseRollback.textContent = 'Rollback: Jenkins data unavailable';
+                return;
+            }
+
+            const lb = jd.lastBuild;
+            if (lb.building) {
+                releaseDot.className = dotClass('warn');
+                releaseStatus.textContent = 'Building latest commit';
+                releaseRollback.textContent = 'Rollback: waiting for build';
+                return;
+            }
+
+            if (lb.result === 'SUCCESS') {
+                releaseDot.className = dotClass('ok');
+                releaseStatus.textContent = 'Stable';
+                releaseRollback.textContent = `Rollback: not needed (stable @ ${gd.shortSha || 'n/a'})`;
+                return;
+            }
+
+            if (lb.result === 'UNSTABLE') {
+                releaseDot.className = dotClass('warn');
+                releaseStatus.textContent = 'Unstable';
+                releaseRollback.textContent = 'Rollback: review recommended';
+                return;
+            }
+
+            if (lb.result === 'FAILURE' || lb.result === 'ABORTED') {
+                releaseDot.className = dotClass('err');
+                releaseStatus.textContent = 'Failed';
+                if (jd.lastSuccessfulCommit?.id) {
+                    const stableMsg = jd.lastSuccessfulCommit.message || 'stable';
+                    releaseRollback.textContent = `Rollback: rolled back to ${jd.lastSuccessfulCommit.id.slice(0, 7)} (${stableMsg})`;
+                } else {
+                    releaseRollback.textContent = 'Rollback: no stable commit found';
+                }
+                return;
+            }
+
+            releaseDot.className = dotClass('');
+            releaseStatus.textContent = 'Idle';
+            releaseRollback.textContent = 'Rollback: n/a';
+        }
+
+        function renderGitHistory(historyData, jd, gd) {
+            if (!historyData || !historyData.ok || !Array.isArray(historyData.commits)) {
+                gitHistory.textContent = historyData?.message || 'Unable to load commits';
+                return;
+            }
+
+            if (gd && gd.ok && gd.branch) {
+                gitBranch.textContent = gd.branch;
+            }
+
+            if (historyData.commits.length === 0) {
+                gitHistory.textContent = 'No commits found.';
+                return;
+            }
+
+            const isStable = jd && jd.ok && jd.lastBuild && jd.lastBuild.result === 'SUCCESS';
+            const stableCommitSha = isStable && gd && gd.ok ? gd.shortSha : null;
+
+            gitHistory.innerHTML = historyData.commits.map((c, i) => {
+                const safeMsg = esc(c.message);
+                const safeAuthor = esc(c.author);
+                let statusHtml = '';
+                
+                if (i === 0) {
+                    if (stableCommitSha === c.shortSha) {
+                        statusHtml = '<span class="commit-status" style="color: var(--green);">● Live & Stable</span>';
+                    } else if (jd && jd.ok && jd.lastBuild && jd.lastBuild.building) {
+                        statusHtml = '<span class="commit-status" style="color: var(--amber);">○ Building...</span>';
+                    } else if (jd && jd.ok && jd.lastBuild && jd.lastBuild.result === 'FAILURE') {
+                        statusHtml = '<span class="commit-status" style="color: var(--red);">● Build Failed</span>';
+                    } else {
+                        statusHtml = '<span class="commit-status" style="color: var(--blue);">● Latest</span>';
+                    }
+                } else if (c.shortSha === stableCommitSha) {
+                    statusHtml = '<span class="commit-status" style="color: var(--green);">● Live (Rolled Back)</span>';
+                }
+
+                return `
+                    <div class="commit-item">
+                        <div class="commit-item-header">
+                            <span class="commit-sha">${c.shortSha}</span>
+                            <span class="commit-author">${safeAuthor}</span>
+                        </div>
+                        <div class="commit-msg" title="${safeMsg}">${safeMsg}</div>
+                        ${statusHtml}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function refreshJenkins() {
+            try {
+                const r = await fetch('/jenkins/status', { cache: 'no-store' });
+                if (!r.ok) throw 0;
+                const d = await r.json();
+                latestJenkins = d;
+                renderJenkins(d);
+                renderGit(latestJenkins, latestGit);
+                renderRelease(latestJenkins, latestGit);
+            }
+            catch {
+                latestJenkins = { ok: false };
+                renderJenkins(latestJenkins);
+                renderGit(latestJenkins, latestGit);
+                renderRelease(latestJenkins, latestGit);
+            }
+        }
+        async function refreshGit() {
+            try {
+                const r = await fetch('/git/status', { cache: 'no-store' });
+                if (!r.ok) throw 0;
+                latestGit = await r.json();
+                renderGit(latestJenkins, latestGit);
+                renderRelease(latestJenkins, latestGit);
+            }
+            catch {
+                latestGit = { ok: false };
+                renderGit(latestJenkins, latestGit);
+                renderRelease(latestJenkins, latestGit);
+            }
+        }
+
+        async function refreshGitHistory() {
+            try {
+                const r = await fetch('/git/history?limit=10', { cache: 'no-store' });
+                if (!r.ok) throw 0;
+                const d = await r.json();
+                renderGitHistory(d, latestJenkins, latestGit);
+            } catch {
+                renderGitHistory({ ok: false }, latestJenkins, latestGit);
+            }
+        }
+
+        // --- Actions ---
+        btnDeployLatest.addEventListener('click', async () => {
+            deployMessage.textContent = 'Triggering deployment...';
+            setDeployDisabled(true);
+            try {
+                let url = `/deploy/latest?appFile=${currentAppFile}`;
+                if (currentBackend === 'jenkins') {
+                    url = `/jenkins/build?appFile=${currentAppFile}`;
+                }
+                
+                const r = await fetch(url, { method: 'POST' });
+                if (!r.ok) {
+                    let m = 'Failed';
+                    try { m = (await r.json()).message || m } catch { }
+                    deployMessage.textContent = m;
+                    setDeployDisabled(false);
+                    return;
+                }
+                deployMessage.textContent = currentBackend === 'jenkins' ? 'Jenkins build triggered successfully' : 'Deployment triggered successfully';
+                await refreshDeploy(); await refreshLogs();
+                if (currentBackend === 'jenkins') {
+                    await refreshJenkins();
+                }
+            } catch {
+                deployMessage.textContent = 'Controller not reachable';
+                setDeployDisabled(false);
+            }
+        });
+
+        targetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                targetBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentBackend = btn.dataset.target;
+                refreshDeploy();
+            });
+        });
+
+        simBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                simBtns.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentAppFile = btn.dataset.app;
+            });
+        });
+
+        jenkinsBuildBtn.addEventListener('click', async () => {
+            jenkinsBuildBtn.disabled = true; jenkinsMeta.textContent = 'Triggering…';
+            try { const r = await fetch('/jenkins/build', { method: 'POST' }); jenkinsMeta.textContent = r.ok ? 'Build triggered — waiting…' : 'Failed to trigger' }
+            catch { jenkinsMeta.textContent = 'Cannot reach Jenkins' }
+            finally { setTimeout(refreshJenkins, 1500) }
+        });
+
+        $('clear-logs').addEventListener('click', () => { logsEl.textContent = 'Cleared.' });
+
+        // --- Init ---
+        checkApp(); refreshDeploy(); refreshLogs(); refreshJenkins(); refreshGit(); refreshGitHistory();
+        setInterval(() => { checkApp(); refreshDeploy(); refreshLogs(); refreshJenkins(); refreshGit(); refreshGitHistory() }, 4000);
+    </script>
 </body>
+
 </html>

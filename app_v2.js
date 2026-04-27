@@ -36,10 +36,11 @@ const server = http.createServer((req, res) => {
     }
 
     if (req.method === 'GET' && (requestPath === '/status' || requestPath === '/health')) {
-        sendJson(res, 200, {
+        sendJson(res, 500, {
             version: VERSION,
-            status: 'healthy',
-            time: new Date().toISOString()
+            status: 'unhealthy',
+            time: new Date().toISOString(),
+            error: 'Database connection failed unexpectedly'
         });
         return;
     }

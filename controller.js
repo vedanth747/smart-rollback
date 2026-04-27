@@ -4,6 +4,20 @@ const fs = require('fs');
 const path = require('path');
 const { execFile, spawn } = require('child_process');
 
+try {
+    const envPath = path.join(__dirname, '.env');
+    const envFile = fs.readFileSync(envPath, 'utf8');
+    envFile.split(/\r?\n/).forEach(line => {
+        const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+        if (match) {
+            const key = match[1];
+            let value = match[2] || '';
+            value = value.replace(/(^['"]|['"]$)/g, '').trim();
+            if (!process.env[key]) process.env[key] = value;
+        }
+    });
+} catch (e) {}
+
 const PORT = process.env.CONTROLLER_PORT || 5000;
 const scriptPath = path.join(__dirname, 'deploy.bat');
 const dashboardPath = path.join(__dirname, 'dashboard.html');
@@ -36,7 +50,7 @@ const deployState = {
     lastExitCode: null,
     startedAt: null,
     finishedAt: null,
-    targetVersion: null,
+    appFile: null,
     lastMessage: null,
     commitSha: null,
     commitMsg: null,
@@ -332,13 +346,18 @@ async function fetchJenkinsStatus() {
     return payload;
 }
 
-async function triggerJenkinsBuild() {
+async function triggerJenkinsBuild(appFile) {
     const authHeader = getJenkinsAuthHeader();
     const jobPath = getJenkinsJobPath();
-    const tokenQuery = JENKINS_TRIGGER_TOKEN ? `?token=${encodeURIComponent(JENKINS_TRIGGER_TOKEN)}` : '';
+    const tokenQuery = JENKINS_TRIGGER_TOKEN ? `token=${encodeURIComponent(JENKINS_TRIGGER_TOKEN)}` : '';
+    const paramQuery = appFile ? `APP_FILE=${encodeURIComponent(appFile)}` : '';
+    const queryStr = [tokenQuery, paramQuery].filter(Boolean).join('&');
+    const endpoint = appFile ? 'buildWithParameters' : 'build';
+    const finalUrl = `${jobPath}/${endpoint}${queryStr ? '?' + queryStr : ''}`;
+    
     const headers = authHeader ? { Authorization: authHeader } : {};
     const crumbHeaders = await getCrumbHeaders();
-    const response = await requestJenkins(`${jobPath}/build${tokenQuery}`, {
+    const response = await requestJenkins(finalUrl, {
         method: 'POST',
         headers: {
             ...headers,
@@ -363,7 +382,7 @@ function normalizeVersion(value) {
     return ALLOWED_VERSIONS.has(normalized) ? normalized : null;
 }
 
-function runDeployment(targetVersion, commitInfo) {
+function runDeployment(appFile, commitInfo) {
     if (deployState.running) {
         return false;
     }
@@ -373,21 +392,21 @@ function runDeployment(targetVersion, commitInfo) {
     deployState.lastExitCode = null;
     deployState.startedAt = new Date().toISOString();
     deployState.finishedAt = null;
-    deployState.targetVersion = targetVersion;
+    deployState.appFile = appFile;
     deployState.lastMessage = null;
     deployState.rollbackTriggered = false;
     deployState.commitSha = commitInfo ? commitInfo.sha : null;
     deployState.commitMsg = commitInfo ? commitInfo.msg : null;
     deployState.logs = [];
     addLog('Deployment started');
-    addLog(`Target version: ${targetVersion}`);
+    addLog(`Target App File: ${appFile}`);
     if (commitInfo) {
         addLog(`Commit: ${commitInfo.sha} — ${commitInfo.msg}`);
     }
 
     const isWindows = process.platform === 'win32';
     const command = isWindows ? 'cmd.exe' : 'sh';
-    const args = isWindows ? ['/c', scriptPath, targetVersion] : [scriptPath, targetVersion];
+    const args = isWindows ? ['/c', scriptPath, appFile, deployState.commitSha || 'latest'] : [scriptPath, appFile, deployState.commitSha || 'latest'];
 
     const child = spawn(command, args, {
         cwd: __dirname,
@@ -491,7 +510,8 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && requestPath === '/jenkins/build') {
         try {
-            const result = await triggerJenkinsBuild();
+            const appFile = url.searchParams.get('appFile') || null;
+            const result = await triggerJenkinsBuild(appFile);
             const status = result.ok ? 202 : (result.statusCode === 401 ? 401 : 500);
             sendJson(res, status, {
                 ok: result.ok,
@@ -505,12 +525,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && requestPath === '/deploy') {
-        const targetVersion = normalizeVersion(url.searchParams.get('version'));
-        if (!targetVersion) {
-            sendJson(res, 400, { ok: false, message: 'Invalid version. Use v1, v2, or v3.' });
-            return;
-        }
-
+        const appFile = url.searchParams.get('appFile') || 'app_v2.js';
+        
         let commitInfo = null;
         try {
             const git = await fetchGitStatus();
@@ -519,13 +535,13 @@ const server = http.createServer(async (req, res) => {
             }
         } catch (e) {}
 
-        const started = runDeployment(targetVersion, commitInfo);
+        const started = runDeployment(appFile, commitInfo);
         if (!started) {
             sendJson(res, 409, { ok: false, message: 'Deployment already running.' });
             return;
         }
 
-        sendJson(res, 202, { ok: true, message: `Deployment started for ${targetVersion}.`, commitSha: commitInfo ? commitInfo.sha : null });
+        sendJson(res, 202, { ok: true, message: `Deployment started for ${appFile}.`, commitSha: commitInfo ? commitInfo.sha : null });
         return;
     }
 
@@ -537,10 +553,10 @@ const server = http.createServer(async (req, res) => {
                 return;
             }
 
-            const targetVersion = normalizeVersion(url.searchParams.get('version')) || DEFAULT_VERSION;
+            const appFile = url.searchParams.get('appFile') || 'app_v2.js';
             const commitInfo = { sha: git.shortSha, msg: git.message };
 
-            const started = runDeployment(targetVersion, commitInfo);
+            const started = runDeployment(appFile, commitInfo);
             if (!started) {
                 sendJson(res, 409, { ok: false, message: 'Deployment already running.' });
                 return;
@@ -548,7 +564,7 @@ const server = http.createServer(async (req, res) => {
 
             sendJson(res, 202, {
                 ok: true,
-                message: `Deploying latest commit ${git.shortSha} (${targetVersion})`,
+                message: `Deploying latest commit ${git.shortSha} with ${appFile}`,
                 commitSha: git.shortSha,
                 commitMsg: git.message,
                 branch: git.branch
@@ -566,7 +582,7 @@ const server = http.createServer(async (req, res) => {
             lastExitCode: deployState.lastExitCode,
             startedAt: deployState.startedAt,
             finishedAt: deployState.finishedAt,
-            targetVersion: deployState.targetVersion,
+            appFile: deployState.appFile,
             lastMessage: deployState.lastMessage,
             commitSha: deployState.commitSha,
             commitMsg: deployState.commitMsg,
